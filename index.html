@@ -48,7 +48,14 @@
   </script>
 
       <!-- 🧭 MARCADOR AR + PLANO que reproduce el video con transparencia -->
-      <a-marker preset="hiro">
+      <a-nft
+      type="nft"
+      url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/leon"
+      smooth="true"
+      smoothCount="10"
+      smoothTolerance=".01"
+      smoothThreshold="5"
+    >
         <a-entity 
           geometry="primitive: plane; height: 1; width: 1.777"
           material="shader: video-matte-shader; 
@@ -56,7 +63,7 @@
                     videoAlpha: #videoAlpha"
           position="0 0 0.1">
         </a-entity>
-      </a-marker>
+      </a-nft>
 
       <a-entity camera></a-entity>
     </a-scene>
