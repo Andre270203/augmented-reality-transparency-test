@@ -31,9 +31,12 @@
       <div class="arjs-loader">
         <div>Loading, please wait...</div>
       </div>
-    <a-scene vr-mode-ui="enabled: false;"
-    renderer="logarithmicDepthBuffer: true; precision: medium;"
-    embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
+    <a-scene 
+      vr-mode-ui="enabled: false;"
+      renderer="logarithmicDepthBuffer: true; precision: medium;"
+      embedded 
+      arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
+    >
       
       <!-- 🎥 Carga de videos como assets -->
       <a-assets>
@@ -76,7 +79,7 @@
       <!-- 🧭 MARCADOR AR + PLANO que reproduce el video con transparencia -->
       <a-nft
       type="nft"
-      url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/leon"
+      url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/concha"
       smooth="true"
       smoothCount="10"
       smoothTolerance=".01"
