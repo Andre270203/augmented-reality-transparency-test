@@ -7,6 +7,37 @@
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
+    <script>
+        // Componente de A-Frame para reproducir videos
+        AFRAME.registerComponent('videoplayer', {
+            init: function() {
+                // Referencia a las entidades de video
+                let videoColor = document.querySelector('#videoColor');
+                let videoAlpha = document.querySelector('#videoAlpha');
+
+                // Escuchar el evento 'markerFound' en el marcador
+                this.el.addEventListener('markerFound', function() {
+                    console.log('Marcador encontrado, intentando reproducir videos...');
+                    // Intentar reproducir los videos si están pausados
+                    if (videoColor.paused) {
+                        videoColor.play();
+                    }
+                    if (videoAlpha.paused) {
+                        videoAlpha.play();
+                    }
+                });
+
+                // Escuchar el evento 'markerLost' para pausar los videos
+                this.el.addEventListener('markerLost', function() {
+                    console.log('Marcador perdido, pausando videos...');
+                    // Pausar los videos
+                    videoColor.pause();
+                    videoAlpha.pause();
+                });
+            }
+        });
+    </script>
+
     <style>
         .arjs-loader {
             height: 100%;
@@ -73,6 +104,7 @@
         </script>
 
         <a-nft
+            videoplayer
             type="nft"
             url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/concha"
             smooth="true"
