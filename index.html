@@ -1,103 +1,95 @@
+<!DOCTYPE html>
 <html>
-  <head>
+<head>
     <meta charset="utf-8">
     <title>AR.js Video Matte Transparency</title>
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
+
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-  </head>
 
-  <style>
-    .arjs-loader {
-      height: 100%;
-      width: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-      background-color: rgba(0, 0, 0, 0.8);
-      z-index: 9999;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .arjs-loader div {
-      text-align: center;
-      font-size: 1.25em;
-      color: white;
-    }
-  </style>
-
-  <body style="margin: 0; overflow: hidden;">
-      <div class="arjs-loader">
-        <div>Loading, please wait...</div>
-      </div>
-    
-    <a-scene 
-      vr-mode-ui="enabled: false;"
-      renderer="logarithmicDepthBuffer: true; precision: medium;"
-      embedded 
-      arjs="sourceType: webcam; debugUIEnabled: false;"
-    >
-      
-      <!-- 🎥 Carga de videos como assets -->
-      <a-assets>
-        <video id="videoColor" src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/video%20color.mp4" preload="auto" response-type="arraybuffer" autoplay loop webkit-playsinline muted playsinline crossorigin></video>
-        <video id="videoAlpha" src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/video%20alpha.mp4" preload="auto" response-type="arraybuffer" autoplay loop webkit-playsinline muted playsinline crossorigin></video>
-      </a-assets>
-
-      <!-- 📦 Shader personalizado para aplicar transparencia -->
-      <script id="matte-shader" type="x-shader/x-fragment">
-        precision mediump float;
-        uniform sampler2D videoColor;
-        uniform sampler2D videoAlpha;
-        varying vec2 vUV;
-
-        void main() {
-          vec4 color = texture2D(videoColor, vUV);
-          vec4 alpha = texture2D(videoAlpha, vUV);
-          gl_FragColor = vec4(color.rgb, alpha.r);
+    <style>
+        .arjs-loader {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-      </script>
 
-      <!-- 🎨 Componente de material personalizado -->
-      <script>
-          AFRAME.registerShader('video-matte-shader', {
-              schema: {
-                  videoColor: { type: 'map', is: 'uniform' },
-                  videoAlpha: { type: 'map', is: 'uniform' }
-              },
-              fragmentShader: document.getElementById('matte-shader').textContent,
-              vertexShader: `
-                  varying vec2 vUV;
-                  void main() {
-                      vUV = uv;
-                      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                  }
-              `
-          });
+        .arjs-loader div {
+            text-align: center;
+            font-size: 1.25em;
+            color: white;
+        }
+    </style>
+</head>
+
+<body style="margin: 0; overflow: hidden;">
+    <div class="arjs-loader">
+        <div>Loading, please wait...</div>
+    </div>
+
+    <a-scene vr-mode-ui="enabled: false;"
+        renderer="logarithmicDepthBuffer: true; precision: medium;"
+        embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
+
+        <a-assets>
+            <video id="videoColor" src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/video%20color.mp4" autoplay loop muted playsinline crossorigin></video>
+            <video id="videoAlpha" src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/video%20alpha.mp4" autoplay loop muted playsinline crossorigin></video>
+        </a-assets>
+
+        <script id="matte-shader" type="x-shader/x-fragment">
+            precision mediump float;
+            uniform sampler2D videoColor;
+            uniform sampler2D videoAlpha;
+            varying vec2 vUV;
+            void main() {
+                vec4 color = texture2D(videoColor, vUV);
+                vec4 alpha = texture2D(videoAlpha, vUV);
+                gl_FragColor = vec4(color.rgb, alpha.r);
+            }
         </script>
 
-      <!-- 🧭 MARCADOR AR + PLANO que reproduce el video con transparencia -->
-      <a-nft
-      type="nft"
-      url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/concha"
-      smooth="true"
-      smoothCount="10"
-      smoothTolerance=".01"
-      smoothThreshold="5"
-      >
-        <a-entity 
-          geometry="primitive: plane; height: 1; width: 1"
-          material="shader: video-matte-shader; 
-                    videoColor: #videoColor; 
-                    videoAlpha: #videoAlpha"
-        >
-        </a-entity>
-          <a-video src="#videoColor" rotation="-90 0 0" position="50 150 -100" width="300" height="175" material='opacity: 0.5;'>
-          </a-video>
-      </a-nft>
+        <script>
+            AFRAME.registerShader('video-matte-shader', {
+                schema: {
+                    videoColor: { type: 'map', is: 'uniform' },
+                    videoAlpha: { type: 'map', is: 'uniform' }
+                },
+                fragmentShader: document.getElementById('matte-shader').textContent,
+                vertexShader: `
+                    varying vec2 vUV;
+                    void main() {
+                        vUV = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `
+            });
+        </script>
 
-      <a-entity camera></a-entity>
+        <a-nft
+            type="nft"
+            url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/concha"
+            smooth="true"
+            smoothCount="10"
+            smoothTolerance=".01"
+            smoothThreshold="5"
+        >
+            <a-entity
+                geometry="primitive: plane; height: 1; width: 1"
+                material="shader: video-matte-shader;
+                          videoColor: #videoColor;
+                          videoAlpha: #videoAlpha"
+                position="0 0 0.1">
+            </a-entity>
+        </a-nft>
+
+        <a-entity camera></a-entity>
     </a-scene>
-  </body>
+</body>
 </html>
