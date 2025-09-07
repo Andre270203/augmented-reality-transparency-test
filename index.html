@@ -112,16 +112,14 @@
             smoothTolerance="0.01"
             smoothThreshold="5"
         >
-            <a-entity
-                geometry="primitive: plane; width: 300; height: 175"
-                material="shader: video-matte-shader;
-                          videoColor: #videoColor;
-                          videoAlpha: #videoAlpha"
+            <a-plane
+                width: 300; height: 175
+                color="7BC8A4"
                 position="50 150 -100" rotation="-90 0 0">
-            </a-entity>
+            </a-plane>
         </a-nft>
 
-        <a-entity camera></a-entity>
+        <a-entity camera look-controls position="0 1.6 0"></a-entity>
     </a-scene>
 </body>
 </html>
