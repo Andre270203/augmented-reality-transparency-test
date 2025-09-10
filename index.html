@@ -1,318 +1,322 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Back Home AR Experience</title>
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-    
-    <script>
-        // Platform detection
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const isAndroid = /Android/.test(navigator.userAgent);
-        console.log(`Platform detected: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}`);
-        
-        if (isIOS) {
-            // iOS-specific implementation with full stability and interaction handling
-            AFRAME.registerComponent('videoplayer', {
-                init: function() {
-                    let videoColor = document.querySelector('#videoColor');
-                    let videoAlpha = document.querySelector('#videoAlpha');
-                    let hasUserInteracted = false;
-                    let isTracking = false;
-                    let stabilityTimer = null;
-                    let lastMarkerTime = 0;
-                    
-                    // Stability enhancement: smooth position interpolation
-                    let targetPosition = { x: 0, y: 0, z: 0 };
-                    let currentPosition = { x: 0, y: 0, z: 0 };
-                    const smoothingFactor = 0.1;
-                    
-                    const interpolatePosition = () => {
-                        if (isTracking) {
-                            currentPosition.x += (targetPosition.x - currentPosition.x) * smoothingFactor;
-                            currentPosition.y += (targetPosition.y - currentPosition.y) * smoothingFactor;
-                            currentPosition.z += (targetPosition.z - currentPosition.z) * smoothingFactor;
-                            
-                            const videoPlane = document.querySelector('a-entity[geometry]');
-                            if (videoPlane) {
-                                videoPlane.setAttribute('position', 
-                                    `${currentPosition.x + 70} ${currentPosition.y + 150} ${currentPosition.z - 100}`
-                                );
-                            }
-                            requestAnimationFrame(interpolatePosition);
-                        }
-                    };
-                    
-                    const playVideos = () => {
-                        console.log('iOS: Attempting to play videos...');
-                        try {
-                            if (videoColor && videoColor.paused) {
-                                if (hasUserInteracted) {
-                                    videoColor.muted = false;
-                                }
-                                
-                                const playPromise1 = videoColor.play();
-                                if (playPromise1 !== undefined) {
-                                    playPromise1.then(() => {
-                                        console.log(`iOS Color video playing ${videoColor.muted ? 'muted' : 'with sound'}`);
-                                        document.getElementById('debugInfo').innerText += ' | Color: Playing';
-                                    }).catch(error => {
-                                        console.error('iOS Color video play failed:', error);
-                                        if (!videoColor.muted) {
-                                            videoColor.muted = true;
-                                            videoColor.play().then(() => {
-                                                console.log('iOS Color video playing muted (fallback)');
-                                            });
-                                        }
-                                    });
-                                }
-                            }
-                            
-                            if (videoAlpha && videoAlpha.paused) {
-                                const playPromise2 = videoAlpha.play();
-                                if (playPromise2 !== undefined) {
-                                    playPromise2.then(() => {
-                                        console.log('iOS Alpha video playing');
-                                        document.getElementById('debugInfo').innerText += ' | Alpha: Playing';
-                                    }).catch(error => {
-                                        console.error('iOS Alpha video play failed:', error);
-                                    });
-                                }
-                            }
-                        } catch (error) {
-                            console.error('iOS Error playing videos:', error);
-                        }
-                    };
-                    
-                    const enableInteraction = () => {
-                        if (!hasUserInteracted) {
-                            hasUserInteracted = true;
-                            console.log('iOS User interaction detected');
-                            playVideos();
-                            document.getElementById('tapMessage').style.display = 'none';
-                            
-                            document.getElementById('debugInfo').innerText = 'iOS: User interacted';
-                        }
-                    };
-                    
-                    document.addEventListener('touchstart', enableInteraction, { once: true });
-                    document.addEventListener('click', enableInteraction, { once: true });
-                    
-                    this.el.addEventListener('markerFound', function() {
-                        console.log('iOS Marker found');
-                        isTracking = true;
-                        lastMarkerTime = Date.now();
-                        document.getElementById('debugInfo').innerText += ' | Marker: Found';
-                        
-                        interpolatePosition();
-                        
-                        if (stabilityTimer) {
-                            clearTimeout(stabilityTimer);
-                            stabilityTimer = null;
-                        }
-                        
-                        if (hasUserInteracted) {
-                            playVideos();
-                        } else {
-                            document.getElementById('tapMessage').style.display = 'block';
-                            document.getElementById('tapMessage').innerText = 'Tap anywhere to enable video playback';
-                        }
-                    });
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <title>Back Home AR Experience</title>
 
-                    this.el.addEventListener('markerLost', function() {
-                        console.log('iOS Marker lost');
-                        document.getElementById('debugInfo').innerText += ' | Marker: Lost';
-                        
-                        stabilityTimer = setTimeout(() => {
-                            isTracking = false;
-                            
-                            if (videoColor && !videoColor.paused) {
-                                videoColor.pause();
-                            }
-                            if (videoAlpha && !videoAlpha.paused) {
-                                videoAlpha.pause();
-                            }
-                            
-                            console.log('iOS Tracking stopped after stability buffer');
-                        }, 500);
-                    });
+  <!-- A-Frame + AR.js -->
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .arjs-loader {
+      height: 100%; width: 100%; position: absolute; inset: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; text-align: center;
+    }
+    .start-button {
+      background: #4caf50; color: #fff; border: none; padding: 14px 28px; border-radius: 28px; font-weight: 700; cursor: pointer; margin-top: 16px;
+      box-shadow: 0 8px 20px rgba(76,175,80,.35); transition: transform .15s ease;
+    }
+    .start-button:active { transform: translateY(1px); }
+    .tap-message {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(255, 100, 100, 0.95); color: #fff; padding: 14px 20px; border-radius: 14px; font-weight: 700; z-index: 15; display: none;
+    }
+    .debug-info {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: rgba(0,0,0,.8); color: #fff; padding: 10px 12px; border-radius: 8px; font-size: 12px; max-width: 340px;
+      border-left: 3px solid #4caf50; line-height: 1.35;
+    }
+  </style>
+
+  <script>
+    // --- Platform detection ---
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const platformName = isIOS ? "iOS" : isAndroid ? "Android" : "Desktop";
+
+    // --- iOS: full-featured videoplayer (interaction + stability) ---
+    if (isIOS) {
+      AFRAME.registerComponent("videoplayer", {
+        init: function () {
+          const videoColor = document.querySelector("#videoColor");
+          const videoAlpha = document.querySelector("#videoAlpha");
+          let hasUserInteracted = false;
+          let isTracking = false;
+          let stabilityTimer = null;
+
+          // Smooth marker jitter (moves the content, not the camera)
+          let targetPosition = { x: 110, y: 175, z: -100 };
+          let currentPosition = { x: 110, y: 175, z: -100 };
+          const smoothing = 0.1;
+
+          const interp = () => {
+            if (!isTracking) return;
+            currentPosition.x += (targetPosition.x - currentPosition.x) * smoothing;
+            currentPosition.y += (targetPosition.y - currentPosition.y) * smoothing;
+            currentPosition.z += (targetPosition.z - currentPosition.z) * smoothing;
+            const plane = document.querySelector("#videoPlane");
+            if (plane) plane.setAttribute("position", `${currentPosition.x} ${currentPosition.y} ${currentPosition.z}`);
+            requestAnimationFrame(interp);
+          };
+
+          const playVideos = () => {
+            const dbg = document.getElementById("debugInfo");
+            try {
+              if (videoColor && videoColor.paused) {
+                if (hasUserInteracted) videoColor.muted = false; // iOS needs user interaction for sound
+                const p1 = videoColor.play();
+                if (p1 && p1.catch) {
+                  p1.catch(() => {
+                    // fallback: keep muted on iOS if unmute fails
+                    videoColor.muted = true;
+                    videoColor.play().catch(()=>{});
+                  });
                 }
-            });
+              }
+              if (videoAlpha && videoAlpha.paused) {
+                const p2 = videoAlpha.play();
+                if (p2 && p2.catch) p2.catch(()=>{});
+              }
+              if (dbg) dbg.textContent += " | Video: play";
+            } catch (e) {
+              if (dbg) dbg.textContent += " | Video: play ERR";
+              console.warn(e);
+            }
+          };
+
+          const enableInteraction = () => {
+            if (hasUserInteracted) return;
+            hasUserInteracted = true;
+            document.getElementById("tapMessage").style.display = "none";
+            document.getElementById("debugInfo").textContent = "iOS: User interacted";
+            playVideos();
+          };
+
+          document.addEventListener("touchstart", enableInteraction, { once: true });
+          document.addEventListener("click", enableInteraction, { once: true });
+
+          this.el.addEventListener("markerFound", () => {
+            isTracking = true;
+            document.getElementById("debugInfo").textContent += " | Marker: Found";
+            interp();
+            if (hasUserInteracted) {
+              playVideos();
+            } else {
+              const msg = document.getElementById("tapMessage");
+              msg.style.display = "block";
+              msg.textContent = "Tap anywhere to enable video playback";
+            }
+          });
+
+          this.el.addEventListener("markerLost", () => {
+            document.getElementById("debugInfo").textContent += " | Marker: Lost";
+            stabilityTimer && clearTimeout(stabilityTimer);
+            stabilityTimer = setTimeout(() => {
+              isTracking = false;
+              if (videoColor && !videoColor.paused) videoColor.pause();
+              if (videoAlpha && !videoAlpha.paused) videoAlpha.pause();
+            }, 500);
+          });
+        },
+      });
+    } else {
+      // --- Android/Desktop: simpler videoplayer to avoid playback pitfalls ---
+      AFRAME.registerComponent("videoplayer", {
+        init: function () {
+          const videoColor = document.querySelector("#videoColor");
+          const videoAlpha = document.querySelector("#videoAlpha");
+
+          this.el.addEventListener("markerFound", () => {
+            if (videoColor && videoColor.paused) videoColor.play().catch(()=>{});
+            if (videoAlpha && videoAlpha.paused) videoAlpha.play().catch(()=>{});
+          });
+
+          this.el.addEventListener("markerLost", () => {
+            if (videoColor && !videoColor.paused) videoColor.pause();
+            if (videoAlpha && !videoAlpha.paused) videoAlpha.pause();
+          });
+        },
+      });
+    }
+
+    // --- ANDROID ZOOM FIX: force camera to 1× (or min) when supported ---
+    function applyAndroidZoomFix(retryCount = 0) {
+      if (!isAndroid) return;
+      const dbg = document.getElementById("debugInfo");
+
+      // AR.js creates a hidden <video> with the webcam stream. Wait until it's ready.
+      const vid = Array.from(document.querySelectorAll("video"))
+        .find(v => v.srcObject && v.srcObject.getVideoTracks && v.srcObject.getVideoTracks().length);
+
+      if (!vid) {
+        if (retryCount < 40) { // retry up to ~12s (40 * 300ms)
+          return setTimeout(() => applyAndroidZoomFix(retryCount + 1), 300);
         } else {
-            // Android/Desktop - Simple implementation to avoid zoom issues
-            AFRAME.registerComponent('videoplayer', {
-                init: function() {
-                    let videoColor = document.querySelector('#videoColor');
-                    let videoAlpha = document.querySelector('#videoAlpha');
+          dbg && (dbg.textContent += " | Camera: no stream");
+          return;
+        }
+      }
 
-                    this.el.addEventListener('markerFound', function() {
-                        console.log('Android: Marcador encontrado, intentando reproducir videos...');
-                        if (videoColor.paused) {
-                            videoColor.play();
-                        }
-                        if (videoAlpha.paused) {
-                            videoAlpha.play();
-                        }
-                    });
+      const track = vid.srcObject.getVideoTracks()[0];
+      if (!track || !track.getCapabilities) {
+        dbg && (dbg.textContent += " | Camera: caps N/A");
+        return;
+      }
 
-                    this.el.addEventListener('markerLost', function() {
-                        console.log('Android: Marcador perdido, pausando videos...');
-                        videoColor.pause();
-                        videoAlpha.pause();
-                    });
-                }
-            });
-        }
-    </script>
-    
-    <style>
-        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
-        .arjs-loader {
-            height: 100%; width: 100%; position: absolute; top: 0; left: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            z-index: 9999; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; color: white; text-align: center;
-        }
-        .start-button {
-            background: #4CAF50; color: white; border: none; padding: 15px 30px;
-            border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer;
-            margin-top: 25px; transition: all 0.3s ease;
-        }
-        .tap-message {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(255, 100, 100, 0.95); color: white; padding: 20px 30px;
-            border-radius: 15px; font-size: 16px; font-weight: bold; z-index: 15;
-            display: none; text-align: center; animation: pulse 2s infinite;
-        }
-        .debug-info {
-            position: absolute; top: 10px; left: 10px;
-            background: rgba(0, 0, 0, 0.8); color: white; padding: 12px;
-            border-radius: 8px; font-size: 11px; z-index: 10; max-width: 320px;
-            line-height: 1.4; border-left: 3px solid #4CAF50;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 0.9; }
-            50% { opacity: 1; }
-        }
-    </style>
+      const caps = track.getCapabilities();
+      const constraints = {
+        width:  { ideal: 1280, max: 1920 },
+        height: { ideal: 720,  max: 1080 },
+        facingMode: "environment"
+      };
+
+      // If hardware zoom is exposed, push it to 1× (or the minimum allowed)
+      if (caps.zoom && typeof caps.zoom.min === "number") {
+        const oneX = Math.max(1, caps.zoom.min);
+        constraints.advanced = [{ zoom: oneX }];
+      }
+
+      // Nice-to-have if supported
+      if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
+        constraints.advanced = (constraints.advanced || []).concat([{ focusMode: "continuous" }]);
+      }
+
+      track.applyConstraints(constraints).then(() => {
+        dbg && (dbg.textContent += " | Camera: zoom=1x applied");
+        console.log("Android camera constraints applied:", constraints);
+      }).catch(err => {
+        dbg && (dbg.textContent += " | Camera: constraint ERR");
+        console.warn("Could not apply Android camera constraints:", err);
+      });
+    }
+
+    // Try at useful lifecycle points (with internal retry above)
+    window.addEventListener("load", () => applyAndroidZoomFix());
+    document.addEventListener("DOMContentLoaded", () => applyAndroidZoomFix());
+    window.addEventListener("arjs-video-loaded", () => applyAndroidZoomFix());
+  </script>
 </head>
 
 <body>
-    <div class="arjs-loader">
-        <h2>Back Home AR Experience</h2>
-        <p>Cross-platform augmented reality</p>
-        <button class="start-button" id="startButton">Start AR Experience</button>
-    </div>
-    
-    <div class="tap-message" id="tapMessage">Tap anywhere to enable video playback</div>
-    <div class="debug-info" id="debugInfo">Initializing...</div>
+  <!-- Loader / start gate (helps iOS autoplay policies) -->
+  <div class="arjs-loader" id="loader">
+    <h2>Back Home AR Experience</h2>
+    <p>Cross-platform augmented reality</p>
+    <button class="start-button" id="startBtn">Start AR Experience</button>
+  </div>
 
-    <a-scene vr-mode-ui="enabled: false;"
-        renderer="logarithmicDepthBuffer: true; precision: medium;"
-        embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
+  <div class="tap-message" id="tapMessage">Tap anywhere to enable video playback</div>
+  <div class="debug-info" id="debugInfo">Initializing… (Platform: <span id="pf"></span>)</div>
 
-        <a-assets id="assets">
-            <!-- Dynamic video configuration based on platform -->
-        </a-assets>
+  <a-scene
+    vr-mode-ui="enabled: false;"
+    renderer="logarithmicDepthBuffer: true; precision: medium;"
+    embedded
+    arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
+  >
+    <a-assets id="assets"></a-assets>
 
-        <!-- Custom shader for video transparency -->
-        <script id="matte-shader" type="x-shader/x-fragment">
-            precision mediump float;
-            uniform sampler2D videoColor;
-            uniform sampler2D videoAlpha;
-            varying vec2 vUV;
-            void main() {
-                vec4 color = texture2D(videoColor, vUV);
-                vec4 alpha = texture2D(videoAlpha, vUV);
-                gl_FragColor = vec4(color.rgb, alpha.r);
-            }
-        </script>
-
-        <script>
-            AFRAME.registerShader('video-matte-shader', {
-                schema: {
-                    videoColor: { type: 'map', is: 'uniform' },
-                    videoAlpha: { type: 'map', is: 'uniform' }
-                },
-                fragmentShader: document.getElementById('matte-shader').textContent,
-                vertexShader: `
-                    varying vec2 vUV;
-                    void main() {
-                        vUV = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `
-            });
-            
-            // Platform-specific video setup
-            const assetsElement = document.querySelector('#assets');
-            
-            if (isIOS) {
-                // iOS configuration - detailed control
-                assetsElement.innerHTML = `
-                    <video id="videoColor" 
-                           src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4" 
-                           preload="metadata" muted loop crossorigin="anonymous" 
-                           webkit-playsinline playsinline>
-                    </video>
-                    <video id="videoAlpha" 
-                           src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4" 
-                           preload="metadata" muted loop crossorigin="anonymous" 
-                           webkit-playsinline playsinline>
-                    </video>
-                `;
-            } else {
-                // Android configuration - simple autoplay to avoid zoom
-                assetsElement.innerHTML = `
-                    <video src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Color.mp4" 
-                           preload="auto" id="videoColor" response-type="arraybuffer" loop crossorigin 
-                           webkit-playsinline autoplay playsinline>
-                    </video>
-                    <video src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4" 
-                           preload="auto" id="videoAlpha" response-type="arraybuffer" loop crossorigin 
-                           webkit-playsinline autoplay playsinline>
-                    </video>
-                `;
-            }
-        </script>
-
-        <!-- NFT marker with platform-optimized settings -->
-        <a-nft
-            videoplayer
-            type="nft"
-            url="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/marker/AR_Image-1"
-            smooth="true"
-            smoothCount="10"
-            smoothTolerance="0.01"
-            smoothThreshold="5"
-        >
-            <!-- Video plane with transparency shader -->
-            <a-entity id="videoPlane"
-                geometry="primitive: plane; width: 350; height: 200"
-                material="shader: video-matte-shader;
-                          videoColor: #videoColor;
-                          videoAlpha: #videoAlpha;
-                          transparent: true;"
-                position="110 175 -100" 
-                rotation="-90 0 0">
-            </a-entity>
-        </a-nft>
-
-        <a-entity camera look-controls position="0 1.6 0"></a-entity>
-    </a-scene>
+    <!-- Transparency matte shader -->
+    <script id="matte-shader" type="x-shader/x-fragment">
+      precision mediump float;
+      uniform sampler2D videoColor;
+      uniform sampler2D videoAlpha;
+      varying vec2 vUV;
+      void main() {
+        vec4 color = texture2D(videoColor, vUV);
+        vec4 alpha = texture2D(videoAlpha, vUV);
+        gl_FragColor = vec4(color.rgb, alpha.r);
+      }
+    </script>
 
     <script>
-        // Start button handler
-        document.getElementById('startButton').addEventListener('click', function() {
-            const loader = document.querySelector('.arjs-loader');
-            loader.style.opacity = '0';
-            setTimeout(() => loader.style.display = 'none', 500);
-            
-            const platformName = isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop';
-            document.getElementById('debugInfo').innerText = `${platformName}: Camera initializing...`;
-        });
+      AFRAME.registerShader("video-matte-shader", {
+        schema: {
+          videoColor: { type: "map", is: "uniform" },
+          videoAlpha: { type: "map", is: "uniform" }
+        },
+        fragmentShader: document.getElementById("matte-shader").textContent,
+        vertexShader: `
+          varying vec2 vUV;
+          void main() {
+            vUV = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `
+      });
+
+      // Inject platform-specific <video> assets
+      const assets = document.querySelector("#assets");
+      if (isIOS) {
+        assets.innerHTML = `
+          <video id="videoColor"
+            src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4"
+            preload="metadata" muted loop crossorigin="anonymous"
+            webkit-playsinline playsinline></video>
+          <video id="videoAlpha"
+            src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4"
+            preload="metadata" muted loop crossorigin="anonymous"
+            webkit-playsinline playsinline></video>
+        `;
+      } else {
+        assets.innerHTML = `
+          <video id="videoColor"
+            src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Color.mp4"
+            preload="auto" loop crossorigin webkit-playsinline autoplay playsinline></video>
+          <video id="videoAlpha"
+            src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4"
+            preload="auto" loop crossorigin webkit-playsinline autoplay playsinline></video>
+        `;
+      }
+
+      // Show platform in debug
+      document.getElementById("pf").textContent = (window.platformName || (window.platformName = (isIOS ? "iOS" : isAndroid ? "Android" : "Desktop")));
     </script>
+
+    <!-- NFT marker + video plane -->
+    <a-nft
+      videoplayer
+      type="nft"
+      url="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/marker/AR_Image-1"
+      smooth="true"
+      smoothCount="10"
+      smoothTolerance="0.01"
+      smoothThreshold="5"
+    >
+      <a-entity id="videoPlane"
+        geometry="primitive: plane; width: 350; height: 200"
+        material="shader: video-matte-shader;
+                  videoColor: #videoColor;
+                  videoAlpha: #videoAlpha;
+                  transparent: true;"
+        position="110 175 -100"
+        rotation="-90 0 0">
+      </a-entity>
+    </a-nft>
+
+    <a-entity camera look-controls position="0 1.6 0"></a-entity>
+  </a-scene>
+
+  <script>
+    // Start button (fade out loader and kick off any platform messages)
+    document.getElementById("startBtn").addEventListener("click", () => {
+      const loader = document.getElementById("loader");
+      loader.style.transition = "opacity .25s ease";
+      loader.style.opacity = "0";
+      setTimeout(() => (loader.style.display = "none"), 250);
+      const dbg = document.getElementById("debugInfo");
+      dbg.textContent = `${platformName}: Camera initializing…`;
+      // Nudge Android zoom fix again after user gesture (helps some devices)
+      applyAndroidZoomFix();
+      setTimeout(applyAndroidZoomFix, 800);
+    });
+  </script>
 </body>
 </html>
