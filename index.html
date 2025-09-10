@@ -20,12 +20,17 @@
                     console.log('Attempting to play videos...');
                     try {
                         if (videoColor && videoColor.paused) {
+                            // Unmute the color video (which has audio) when user interacts
+                            videoColor.muted = false;
                             const playPromise1 = videoColor.play();
                             if (playPromise1 !== undefined) {
                                 playPromise1.then(() => {
-                                    console.log('Color video playing');
+                                    console.log('Color video playing with sound');
                                 }).catch(error => {
                                     console.error('Color video play failed:', error);
+                                    // If it fails, try with muted
+                                    videoColor.muted = true;
+                                    videoColor.play();
                                 });
                             }
                         }
