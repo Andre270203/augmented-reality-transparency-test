@@ -1,127 +1,330 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Back Home AR Experience</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Back Home AR Experience - iOS Fix</title>
     <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-
-    <script>
-        // Componente de A-Frame para reproducir videos
-        AFRAME.registerComponent('videoplayer', {
-            init: function() {
-                // Referencia a las entidades de video
-                let videoColor = document.querySelector('#videoColor');
-                let videoAlpha = document.querySelector('#videoAlpha');
-
-                // Escuchar el evento 'markerFound' en el marcador
-                this.el.addEventListener('markerFound', function() {
-                    console.log('Marcador encontrado, intentando reproducir videos...');
-                    // Intentar reproducir los videos si están pausados
-                    if (videoColor.paused) {
-                        videoColor.play();
-                    }
-                    if (videoAlpha.paused) {
-                        videoAlpha.play();
-                    }
-                });
-
-                // Escuchar el evento 'markerLost' para pausar los videos
-                this.el.addEventListener('markerLost', function() {
-                    console.log('Marcador perdido, pausando videos...');
-                    // Pausar los videos
-                    videoColor.pause();
-                    videoAlpha.pause();
-                });
-            }
-        });
-    </script>
-
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            overflow: hidden;
+            background: #000;
+            color: white;
+        }
+        
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+        
         .arjs-loader {
             height: 100%;
             width: 100%;
             position: absolute;
             top: 0;
             left: 0;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             z-index: 9999;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            transition: opacity 0.5s ease;
         }
-
-        .arjs-loader div {
+        
+        .loader-content {
             text-align: center;
-            font-size: 1.25em;
+            max-width: 90%;
+        }
+        
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #4db6ac;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #4db6ac;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .ios-warning {
+            display: none;
+            background: rgba(255, 100, 100, 0.2);
+            border-left: 4px solid #ff5252;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .ios .ios-warning {
+            display: block;
+        }
+        
+        .start-button {
+            background: #4db6ac;
             color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .start-button:hover {
+            background: #26a69a;
+            transform: scale(1.05);
+        }
+        
+        .debug-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 10;
+            display: none;
+        }
+        
+        .watermark {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            z-index: 10;
         }
     </style>
 </head>
+<body>
+    <div class="container">
+        <div class="arjs-loader">
+            <div class="loader-content">
+                <div class="loader-spinner"></div>
+                <h1>Back Home AR Experience</h1>
+                <p>Loading augmented reality environment...</p>
+                
+                <div class="instructions">
+                    <p><strong>For best experience:</strong></p>
+                    <ol>
+                        <li>Ensure good lighting conditions</li>
+                        <li>Hold your device steady while scanning</li>
+                        <li>Move slowly around the marker</li>
+                    </ol>
+                </div>
+                
+                <div class="ios-warning">
+                    <p><strong>iOS Users:</strong> Please allow camera access and tap the screen to start video playback if it doesn't begin automatically.</p>
+                </div>
+                
+                <button class="start-button" id="startButton">Start AR Experience</button>
+            </div>
+        </div>
+        
+        <div class="debug-info" id="debugInfo"></div>
+        <div class="watermark">AR Experience v2.1</div>
 
-<body style="margin: 0; overflow: hidden;">
-    <div class="arjs-loader">
-        <div>Loading, please wait...</div>
+        <a-scene vr-mode-ui="enabled: false" embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
+            <a-assets>
+                <!-- Using CORS-enabled video sources for better iOS compatibility -->
+                <video id="videoColor" preload="auto" loop crossorigin="anonymous" playsinline webkit-playsinline>
+                    <source src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4" type="video/mp4">
+                </video>
+                <video id="videoAlpha" preload="auto" loop crossorigin="anonymous" playsinline webkit-playsinline>
+                    <source src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4" type="video/mp4">
+                </video>
+            </a-assets>
+
+            <!-- Custom shader for combining color and alpha videos -->
+            <script id="matte-shader" type="x-shader/x-fragment">
+                precision mediump float;
+                uniform sampler2D videoColor;
+                uniform sampler2D videoAlpha;
+                varying vec2 vUV;
+                
+                void main() {
+                    vec4 color = texture2D(videoColor, vUV);
+                    vec4 alpha = texture2D(videoAlpha, vUV);
+                    gl_FragColor = vec4(color.rgb, alpha.r);
+                }
+            </script>
+
+            <a-nft
+                type="nft"
+                url="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/marker/AR_Image-1"
+                smooth="true"
+                smoothCount="10"
+                smoothTolerance="0.01"
+                smoothThreshold="5"
+            >
+                <a-plane
+                    position="0 0 0"
+                    rotation="-90 0 0"
+                    width="1.78"
+                    height="1"
+                    material="shader: video-matte-shader; transparent: true;"
+                    video-matte-shader="videoColor: #videoColor; videoAlpha: #videoAlpha"
+                >
+                </a-plane>
+            </a-nft>
+
+            <a-entity camera look-controls position="0 1.6 0"></a-entity>
+        </a-scene>
     </div>
 
-    <a-scene vr-mode-ui="enabled: false;"
-        renderer="logarithmicDepthBuffer: true; precision: medium;"
-        embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
-
-        <a-assets>
-            <video src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4" preload="auto" id="videoColor" response-type="arraybuffer" loop crossorigin webkit-playsinline autoplay playsinline></video>
-            <video src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4" preload="auto" id="videoAlpha" response-type="arraybuffer" loop crossorigin webkit-playsinline autoplay playsinline></video>
-        </a-assets>
-
-        <script id="matte-shader" type="x-shader/x-fragment">
-            precision mediump float;
-            uniform sampler2D videoColor;
-            uniform sampler2D videoAlpha;
-            varying vec2 vUV;
-            void main() {
-                vec4 color = texture2D(videoColor, vUV);
-                vec4 alpha = texture2D(videoAlpha, vUV);
-                gl_FragColor = vec4(color.rgb, alpha.r);
-            }
-        </script>
-
-        <script>
-            AFRAME.registerShader('video-matte-shader', {
-                schema: {
-                    videoColor: { type: 'map', is: 'uniform' },
-                    videoAlpha: { type: 'map', is: 'uniform' }
-                },
-                fragmentShader: document.getElementById('matte-shader').textContent,
-                vertexShader: `
-                    varying vec2 vUV;
-                    void main() {
-                        vUV = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    <script>
+        // Detect iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            document.body.classList.add('ios');
+            document.getElementById('debugInfo').innerText = 'iOS detected';
+        }
+        
+        // Register custom shader
+        AFRAME.registerShader('video-matte-shader', {
+            schema: {
+                videoColor: { type: 'map', is: 'uniform' },
+                videoAlpha: { type: 'map', is: 'uniform' }
+            },
+            
+            vertexShader: `
+                varying vec2 vUV;
+                void main() {
+                    vUV = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            
+            fragmentShader: document.getElementById('matte-shader').textContent
+        });
+        
+        // Video playback component for iOS compatibility
+        AFRAME.registerComponent('video-playback', {
+            init: function() {
+                this.videoColor = document.querySelector('#videoColor');
+                this.videoAlpha = document.querySelector('#videoAlpha');
+                this.hasInteracted = false;
+                
+                // iOS requires direct user interaction to play videos
+                const playVideos = () => {
+                    if (this.videoColor && this.videoAlpha) {
+                        const playPromise1 = this.videoColor.play();
+                        const playPromise2 = this.videoAlpha.play();
+                        
+                        if (playPromise1 !== undefined) {
+                            playPromise1.catch(error => {
+                                console.error('Video Color play failed:', error);
+                            });
+                        }
+                        
+                        if (playPromise2 !== undefined) {
+                            playPromise2.catch(error => {
+                                console.error('Video Alpha play failed:', error);
+                            });
+                        }
+                        
+                        this.hasInteracted = true;
                     }
-                `
+                };
+                
+                // Add click/tap event listener to start video playback
+                this.el.sceneEl.addEventListener('click', () => {
+                    if (!this.hasInteracted) {
+                        playVideos();
+                    }
+                });
+                
+                // Handle marker found event
+                this.el.addEventListener('markerFound', () => {
+                    console.log('Marker found');
+                    if (this.hasInteracted) {
+                        playVideos();
+                    } else {
+                        // Show message to tap screen on iOS
+                        if (isIOS) {
+                            document.getElementById('debugInfo').innerText = 'Tap screen to play video';
+                            document.getElementById('debugInfo').style.display = 'block';
+                        }
+                    }
+                });
+                
+                // Handle marker lost event
+                this.el.addEventListener('markerLost', () => {
+                    console.log('Marker lost');
+                    if (this.videoColor) this.videoColor.pause();
+                    if (this.videoAlpha) this.videoAlpha.pause();
+                });
+            }
+        });
+        
+        // Add video-playback component to the nft marker
+        document.querySelector('a-nft').setAttribute('video-playback', '');
+        
+        // Handle start button
+        document.getElementById('startButton').addEventListener('click', function() {
+            document.querySelector('.arjs-loader').style.opacity = '0';
+            setTimeout(() => {
+                document.querySelector('.arjs-loader').style.display = 'none';
+            }, 500);
+            
+            // Try to play videos immediately after user interaction
+            const videos = document.querySelectorAll('video');
+            videos.forEach(video => {
+                if (video.paused) {
+                    video.play().catch(e => console.log('Video play requires more interaction:', e));
+                }
             });
-        </script>
-
-        <a-nft
-            videoplayer
-            type="nft"
-            url="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/marker/AR_Image-1"
-            smooth="true"
-            smoothCount="10"
-            smoothTolerance="0.01"
-            smoothThreshold="5"
-        >
-            <a-entity
-                geometry="primitive: plane; width: 300; height: 175"
-                material="shader: video-matte-shader;
-                          videoColor: #videoColor;
-                          videoAlpha: #videoAlpha"
-                position="50 150 -100" rotation="-90 0 0">
-            </a-entity>
-        </a-nft>
-
-        <a-entity camera look-controls position="0 1.6 0"></a-entity>
-    </a-scene>
+        });
+        
+        // Show debug info
+        setTimeout(() => {
+            document.getElementById('debugInfo').style.display = 'block';
+        }, 3000);
+    </script>
 </body>
 </html>
