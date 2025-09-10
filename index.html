@@ -11,39 +11,88 @@
         // Platform detection
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         const isAndroid = /Android/.test(navigator.userAgent);
-        ""
-        // Universal video player component with platform-specific optimizations
+        
+        // Universal video player component with platform-specific optimizations and stability
         AFRAME.registerComponent('videoplayer', {
             init: function() {
                 let videoColor = document.querySelector('#videoColor');
                 let videoAlpha = document.querySelector('#videoAlpha');
                 let hasUserInteracted = false;
+                let isTracking = false;
+                let stabilityTimer = null;
+                let lastMarkerTime = 0;
                 
                 console.log(`Platform: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}`);
                 
-                const playVideos = () => {
-                    if (videoColor && videoColor.paused) {
-                        if (hasUserInteracted || isAndroid) {
-                            videoColor.muted = false;
+                // Stability enhancement: smooth position interpolation
+                let targetPosition = { x: 0, y: 0, z: 0 };
+                let currentPosition = { x: 0, y: 0, z: 0 };
+                const smoothingFactor = 0.15; // Adjust between 0.1-0.3 for more/less smoothing
+                
+                const interpolatePosition = () => {
+                    if (isTracking) {
+                        currentPosition.x += (targetPosition.x - currentPosition.x) * smoothingFactor;
+                        currentPosition.y += (targetPosition.y - currentPosition.y) * smoothingFactor;
+                        currentPosition.z += (targetPosition.z - currentPosition.z) * smoothingFactor;
+                        
+                        const videoPlane = document.querySelector('a-entity[geometry]');
+                        if (videoPlane) {
+                            videoPlane.setAttribute('position', 
+                                `${currentPosition.x + 70} ${currentPosition.y + 150} ${currentPosition.z - 100}`
+                            );
                         }
-                        videoColor.play().catch(e => {
-                            if (isIOS) {
-                                videoColor.muted = true;
-                                videoColor.play();
-                            }
-                        });
+                        requestAnimationFrame(interpolatePosition);
                     }
-                    if (videoAlpha && videoAlpha.paused) {
-                        videoAlpha.play();
+                };
+                
+                const playVideos = () => {
+                    console.log('Attempting to play videos...');
+                    try {
+                        if (videoColor && videoColor.paused) {
+                            if (hasUserInteracted || isAndroid) {
+                                videoColor.muted = false;
+                            }
+                            
+                            const playPromise1 = videoColor.play();
+                            if (playPromise1 !== undefined) {
+                                playPromise1.then(() => {
+                                    console.log(`Color video playing ${videoColor.muted ? 'muted' : 'with sound'}`);
+                                }).catch(error => {
+                                    console.error('Color video play failed:', error);
+                                    if (isIOS && !videoColor.muted) {
+                                        videoColor.muted = true;
+                                        videoColor.play().then(() => {
+                                            console.log('Color video playing muted (fallback)');
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                        
+                        if (videoAlpha && videoAlpha.paused) {
+                            const playPromise2 = videoAlpha.play();
+                            if (playPromise2 !== undefined) {
+                                playPromise2.then(() => {
+                                    console.log('Alpha video playing');
+                                }).catch(error => {
+                                    console.error('Alpha video play failed:', error);
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error playing videos:', error);
                     }
                 };
                 
                 // iOS requires user interaction
                 if (isIOS) {
                     const enableInteraction = () => {
-                        hasUserInteracted = true;
-                        playVideos();
-                        document.getElementById('tapMessage').style.display = 'none';
+                        if (!hasUserInteracted) {
+                            hasUserInteracted = true;
+                            console.log('User interaction detected');
+                            playVideos();
+                            document.getElementById('tapMessage').style.display = 'none';
+                        }
                     };
                     document.addEventListener('touchstart', enableInteraction, { once: true });
                     document.addEventListener('click', enableInteraction, { once: true });
@@ -53,23 +102,53 @@
                 if (isAndroid) {
                     setTimeout(() => {
                         if (!hasUserInteracted) {
+                            console.log('Android: Attempting autoplay');
                             hasUserInteracted = true;
                             playVideos();
                         }
                     }, 1000);
                 }
                 
+                // Enhanced marker found with stability features
                 this.el.addEventListener('markerFound', function() {
+                    console.log('Marker found');
+                    isTracking = true;
+                    lastMarkerTime = Date.now();
+                    
+                    // Start position interpolation for smooth tracking
+                    interpolatePosition();
+                    
+                    // Clear any stability timeout
+                    if (stabilityTimer) {
+                        clearTimeout(stabilityTimer);
+                        stabilityTimer = null;
+                    }
+                    
                     if (hasUserInteracted || isAndroid) {
                         playVideos();
                     } else if (isIOS) {
                         document.getElementById('tapMessage').style.display = 'block';
+                        document.getElementById('tapMessage').innerText = 'Tap anywhere to enable video playback';
                     }
                 });
 
+                // Enhanced marker lost with stability buffer
                 this.el.addEventListener('markerLost', function() {
-                    if (videoColor && !videoColor.paused) videoColor.pause();
-                    if (videoAlpha && !videoAlpha.paused) videoAlpha.pause();
+                    console.log('Marker lost');
+                    
+                    // Add stability buffer - don't immediately stop tracking
+                    stabilityTimer = setTimeout(() => {
+                        isTracking = false;
+                        
+                        if (videoColor && !videoColor.paused) {
+                            videoColor.pause();
+                        }
+                        if (videoAlpha && !videoAlpha.paused) {
+                            videoAlpha.pause();
+                        }
+                        
+                        console.log('Tracking stopped after stability buffer');
+                    }, 500); // 500ms buffer before stopping
                 });
             }
         });
