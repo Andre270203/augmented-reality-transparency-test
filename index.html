@@ -11,147 +11,160 @@
         // Platform detection
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         const isAndroid = /Android/.test(navigator.userAgent);
+        console.log(`Platform detected: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}`);
         
-        // Universal video player component with platform-specific optimizations and stability
-        AFRAME.registerComponent('videoplayer', {
-            init: function() {
-                let videoColor = document.querySelector('#videoColor');
-                let videoAlpha = document.querySelector('#videoAlpha');
-                let hasUserInteracted = false;
-                let isTracking = false;
-                let stabilityTimer = null;
-                let lastMarkerTime = 0;
-                
-                console.log(`Platform: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}`);
-                
-                // Stability enhancement: smooth position interpolation
-                let targetPosition = { x: 0, y: 0, z: 0 };
-                let currentPosition = { x: 0, y: 0, z: 0 };
-                const smoothingFactor = 0.15; // Adjust between 0.1-0.3 for more/less smoothing
-                
-                const interpolatePosition = () => {
-                    if (isTracking) {
-                        currentPosition.x += (targetPosition.x - currentPosition.x) * smoothingFactor;
-                        currentPosition.y += (targetPosition.y - currentPosition.y) * smoothingFactor;
-                        currentPosition.z += (targetPosition.z - currentPosition.z) * smoothingFactor;
-                        
-                        const videoPlane = document.querySelector('a-entity[geometry]');
-                        if (videoPlane) {
-                            videoPlane.setAttribute('position', 
-                                `${currentPosition.x + 70} ${currentPosition.y + 150} ${currentPosition.z - 100}`
-                            );
+        if (isIOS) {
+            // iOS-specific implementation with full stability and interaction handling
+            AFRAME.registerComponent('videoplayer', {
+                init: function() {
+                    let videoColor = document.querySelector('#videoColor');
+                    let videoAlpha = document.querySelector('#videoAlpha');
+                    let hasUserInteracted = false;
+                    let isTracking = false;
+                    let stabilityTimer = null;
+                    let lastMarkerTime = 0;
+                    
+                    // Stability enhancement: smooth position interpolation
+                    let targetPosition = { x: 0, y: 0, z: 0 };
+                    let currentPosition = { x: 0, y: 0, z: 0 };
+                    const smoothingFactor = 0.1;
+                    
+                    const interpolatePosition = () => {
+                        if (isTracking) {
+                            currentPosition.x += (targetPosition.x - currentPosition.x) * smoothingFactor;
+                            currentPosition.y += (targetPosition.y - currentPosition.y) * smoothingFactor;
+                            currentPosition.z += (targetPosition.z - currentPosition.z) * smoothingFactor;
+                            
+                            const videoPlane = document.querySelector('a-entity[geometry]');
+                            if (videoPlane) {
+                                videoPlane.setAttribute('position', 
+                                    `${currentPosition.x + 70} ${currentPosition.y + 150} ${currentPosition.z - 100}`
+                                );
+                            }
+                            requestAnimationFrame(interpolatePosition);
                         }
-                        requestAnimationFrame(interpolatePosition);
-                    }
-                };
-                
-                const playVideos = () => {
-                    console.log('Attempting to play videos...');
-                    try {
-                        if (videoColor && videoColor.paused) {
-                            if (hasUserInteracted || isAndroid) {
-                                videoColor.muted = false;
+                    };
+                    
+                    const playVideos = () => {
+                        console.log('iOS: Attempting to play videos...');
+                        try {
+                            if (videoColor && videoColor.paused) {
+                                if (hasUserInteracted) {
+                                    videoColor.muted = false;
+                                }
+                                
+                                const playPromise1 = videoColor.play();
+                                if (playPromise1 !== undefined) {
+                                    playPromise1.then(() => {
+                                        console.log(`iOS Color video playing ${videoColor.muted ? 'muted' : 'with sound'}`);
+                                        document.getElementById('debugInfo').innerText += ' | Color: Playing';
+                                    }).catch(error => {
+                                        console.error('iOS Color video play failed:', error);
+                                        if (!videoColor.muted) {
+                                            videoColor.muted = true;
+                                            videoColor.play().then(() => {
+                                                console.log('iOS Color video playing muted (fallback)');
+                                            });
+                                        }
+                                    });
+                                }
                             }
                             
-                            const playPromise1 = videoColor.play();
-                            if (playPromise1 !== undefined) {
-                                playPromise1.then(() => {
-                                    console.log(`Color video playing ${videoColor.muted ? 'muted' : 'with sound'}`);
-                                }).catch(error => {
-                                    console.error('Color video play failed:', error);
-                                    if (isIOS && !videoColor.muted) {
-                                        videoColor.muted = true;
-                                        videoColor.play().then(() => {
-                                            console.log('Color video playing muted (fallback)');
-                                        });
-                                    }
-                                });
+                            if (videoAlpha && videoAlpha.paused) {
+                                const playPromise2 = videoAlpha.play();
+                                if (playPromise2 !== undefined) {
+                                    playPromise2.then(() => {
+                                        console.log('iOS Alpha video playing');
+                                        document.getElementById('debugInfo').innerText += ' | Alpha: Playing';
+                                    }).catch(error => {
+                                        console.error('iOS Alpha video play failed:', error);
+                                    });
+                                }
                             }
+                        } catch (error) {
+                            console.error('iOS Error playing videos:', error);
                         }
-                        
-                        if (videoAlpha && videoAlpha.paused) {
-                            const playPromise2 = videoAlpha.play();
-                            if (playPromise2 !== undefined) {
-                                playPromise2.then(() => {
-                                    console.log('Alpha video playing');
-                                }).catch(error => {
-                                    console.error('Alpha video play failed:', error);
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error playing videos:', error);
-                    }
-                };
-                
-                // iOS requires user interaction
-                if (isIOS) {
+                    };
+                    
                     const enableInteraction = () => {
                         if (!hasUserInteracted) {
                             hasUserInteracted = true;
-                            console.log('User interaction detected');
+                            console.log('iOS User interaction detected');
                             playVideos();
                             document.getElementById('tapMessage').style.display = 'none';
+                            
+                            document.getElementById('debugInfo').innerText = 'iOS: User interacted';
                         }
                     };
+                    
                     document.addEventListener('touchstart', enableInteraction, { once: true });
                     document.addEventListener('click', enableInteraction, { once: true });
-                }
-                
-                // Android autoplay attempt
-                if (isAndroid) {
-                    setTimeout(() => {
-                        if (!hasUserInteracted) {
-                            console.log('Android: Attempting autoplay');
-                            hasUserInteracted = true;
+                    
+                    this.el.addEventListener('markerFound', function() {
+                        console.log('iOS Marker found');
+                        isTracking = true;
+                        lastMarkerTime = Date.now();
+                        document.getElementById('debugInfo').innerText += ' | Marker: Found';
+                        
+                        interpolatePosition();
+                        
+                        if (stabilityTimer) {
+                            clearTimeout(stabilityTimer);
+                            stabilityTimer = null;
+                        }
+                        
+                        if (hasUserInteracted) {
                             playVideos();
+                        } else {
+                            document.getElementById('tapMessage').style.display = 'block';
+                            document.getElementById('tapMessage').innerText = 'Tap anywhere to enable video playback';
                         }
-                    }, 1000);
-                }
-                
-                // Enhanced marker found with stability features
-                this.el.addEventListener('markerFound', function() {
-                    console.log('Marker found');
-                    isTracking = true;
-                    lastMarkerTime = Date.now();
-                    
-                    // Start position interpolation for smooth tracking
-                    interpolatePosition();
-                    
-                    // Clear any stability timeout
-                    if (stabilityTimer) {
-                        clearTimeout(stabilityTimer);
-                        stabilityTimer = null;
-                    }
-                    
-                    if (hasUserInteracted || isAndroid) {
-                        playVideos();
-                    } else if (isIOS) {
-                        document.getElementById('tapMessage').style.display = 'block';
-                        document.getElementById('tapMessage').innerText = 'Tap anywhere to enable video playback';
-                    }
-                });
+                    });
 
-                // Enhanced marker lost with stability buffer
-                this.el.addEventListener('markerLost', function() {
-                    console.log('Marker lost');
-                    
-                    // Add stability buffer - don't immediately stop tracking
-                    stabilityTimer = setTimeout(() => {
-                        isTracking = false;
+                    this.el.addEventListener('markerLost', function() {
+                        console.log('iOS Marker lost');
+                        document.getElementById('debugInfo').innerText += ' | Marker: Lost';
                         
-                        if (videoColor && !videoColor.paused) {
-                            videoColor.pause();
+                        stabilityTimer = setTimeout(() => {
+                            isTracking = false;
+                            
+                            if (videoColor && !videoColor.paused) {
+                                videoColor.pause();
+                            }
+                            if (videoAlpha && !videoAlpha.paused) {
+                                videoAlpha.pause();
+                            }
+                            
+                            console.log('iOS Tracking stopped after stability buffer');
+                        }, 500);
+                    });
+                }
+            });
+        } else {
+            // Android/Desktop - Simple implementation to avoid zoom issues
+            AFRAME.registerComponent('videoplayer', {
+                init: function() {
+                    let videoColor = document.querySelector('#videoColor');
+                    let videoAlpha = document.querySelector('#videoAlpha');
+
+                    this.el.addEventListener('markerFound', function() {
+                        console.log('Android: Marcador encontrado, intentando reproducir videos...');
+                        if (videoColor.paused) {
+                            videoColor.play();
                         }
-                        if (videoAlpha && !videoAlpha.paused) {
-                            videoAlpha.pause();
+                        if (videoAlpha.paused) {
+                            videoAlpha.play();
                         }
-                        
-                        console.log('Tracking stopped after stability buffer');
-                    }, 500); // 500ms buffer before stopping
-                });
-            }
-        });
+                    });
+
+                    this.el.addEventListener('markerLost', function() {
+                        console.log('Android: Marcador perdido, pausando videos...');
+                        videoColor.pause();
+                        videoAlpha.pause();
+                    });
+                }
+            });
+        }
     </script>
     
     <style>
@@ -173,6 +186,12 @@
             border-radius: 15px; font-size: 16px; font-weight: bold; z-index: 15;
             display: none; text-align: center; animation: pulse 2s infinite;
         }
+        .debug-info {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(0, 0, 0, 0.8); color: white; padding: 12px;
+            border-radius: 8px; font-size: 11px; z-index: 10; max-width: 320px;
+            line-height: 1.4; border-left: 3px solid #4CAF50;
+        }
         @keyframes pulse {
             0%, 100% { opacity: 0.9; }
             50% { opacity: 1; }
@@ -188,23 +207,14 @@
     </div>
     
     <div class="tap-message" id="tapMessage">Tap anywhere to enable video playback</div>
+    <div class="debug-info" id="debugInfo">Initializing...</div>
 
     <a-scene vr-mode-ui="enabled: false;"
         renderer="logarithmicDepthBuffer: true; precision: medium;"
         embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
 
-        <a-assets>
-            <!-- Platform-specific video configuration -->
-            <video id="videoColor" 
-                   src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4" 
-                   preload="metadata" muted loop crossorigin="anonymous" 
-                   webkit-playsinline playsinline>
-            </video>
-            <video id="videoAlpha" 
-                   src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4" 
-                   preload="metadata" muted loop crossorigin="anonymous" 
-                   webkit-playsinline playsinline>
-            </video>
+        <a-assets id="assets">
+            <!-- Dynamic video configuration based on platform -->
         </a-assets>
 
         <!-- Custom shader for video transparency -->
@@ -235,6 +245,37 @@
                     }
                 `
             });
+            
+            // Platform-specific video setup
+            const assetsElement = document.querySelector('#assets');
+            
+            if (isIOS) {
+                // iOS configuration - detailed control
+                assetsElement.innerHTML = `
+                    <video id="videoColor" 
+                           src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4" 
+                           preload="metadata" muted loop crossorigin="anonymous" 
+                           webkit-playsinline playsinline>
+                    </video>
+                    <video id="videoAlpha" 
+                           src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4" 
+                           preload="metadata" muted loop crossorigin="anonymous" 
+                           webkit-playsinline playsinline>
+                    </video>
+                `;
+            } else {
+                // Android configuration - simple autoplay to avoid zoom
+                assetsElement.innerHTML = `
+                    <video src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Color.mp4" 
+                           preload="auto" id="videoColor" response-type="arraybuffer" loop crossorigin 
+                           webkit-playsinline autoplay playsinline>
+                    </video>
+                    <video src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4" 
+                           preload="auto" id="videoAlpha" response-type="arraybuffer" loop crossorigin 
+                           webkit-playsinline autoplay playsinline>
+                    </video>
+                `;
+            }
         </script>
 
         <!-- NFT marker with platform-optimized settings -->
@@ -248,13 +289,13 @@
             smoothThreshold="5"
         >
             <!-- Video plane with transparency shader -->
-            <a-entity
+            <a-entity id="videoPlane"
                 geometry="primitive: plane; width: 350; height: 200"
                 material="shader: video-matte-shader;
                           videoColor: #videoColor;
                           videoAlpha: #videoAlpha;
                           transparent: true;"
-                position="70 150 -100" 
+                position="85 150 -100" 
                 rotation="-90 0 0">
             </a-entity>
         </a-nft>
@@ -268,6 +309,9 @@
             const loader = document.querySelector('.arjs-loader');
             loader.style.opacity = '0';
             setTimeout(() => loader.style.display = 'none', 500);
+            
+            const platformName = isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop';
+            document.getElementById('debugInfo').innerText = `${platformName}: Camera initializing...`;
         });
     </script>
 </body>
