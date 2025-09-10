@@ -22,61 +22,70 @@
     .tap-btn {
       margin-top: 12px; background: #4caf50; color: #fff; border: 0; border-radius: 20px; padding: 10px 18px; font-weight: 700;
     }
+    /* Small, unobtrusive Android “sound” chip */
+    .sound-chip {
+      position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+      background: rgba(0,0,0,0.7); color: #fff; padding: 8px 12px; border-radius: 999px; font-size: 14px; z-index: 10001; display: none;
+    }
   </style>
 
   <script>
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isAndroid = /Android/i.test(navigator.userAgent);
 
-    // Simple videoplayer (your working Android logic) + iOS user-gesture gate
+    // Your simple videoplayer + cross-platform audio unlock
     AFRAME.registerComponent('videoplayer', {
       init: function () {
         const videoColor = document.querySelector('#videoColor');
         const videoAlpha = document.querySelector('#videoAlpha');
 
-        // --- iOS: require a user gesture to unmute+play color video ---
-        let iosReady = !isIOS;    // Android/desktop: ready immediately; iOS: wait for tap
+        // Start both muted for maximum compatibility; we’ll unmute color on tap
+        videoColor.muted = true;
+        videoAlpha.muted = true;
+
+        let audioUnlocked = false; // becomes true after first user gesture
         const tapOverlay = document.getElementById('tapOverlay');
         const tapBtn = document.getElementById('tapBtn');
+        const soundChip = document.getElementById('soundChip');
 
+        // iOS: require full overlay; Android: show small “Enable sound” chip
         if (isIOS) {
-          // On iOS we start both videos muted; we only unmute color after a tap.
-          // Ensure attributes exist (some Safari versions are picky).
-          videoColor.setAttribute('muted', '');
-          videoAlpha.setAttribute('muted', '');
-
-          // Show overlay until user taps
           tapOverlay.style.display = 'flex';
-
-          const enableIOS = () => {
-            // Try to start both videos muted first (satisfy autoplay policy),
-            // then unmute color and resume.
-            const startMuted = Promise.all([
-              videoColor.play().catch(() => {}),
-              videoAlpha.play().catch(() => {})
-            ]).then(() => {
-              videoColor.muted = false;  // allow audio after gesture
-              // Calling play again makes Safari commit to rendering the video frames to the texture
-              return videoColor.play().catch(() => {});
-            }).finally(() => {
-              iosReady = true;
-              tapOverlay.style.display = 'none';
-            });
-
-            // Remove extra listeners after first tap
-            tapBtn.removeEventListener('click', enableIOS);
-            tapOverlay.removeEventListener('click', enableIOS);
-          };
-
-          tapBtn.addEventListener('click', enableIOS, { once: true });
-          tapOverlay.addEventListener('click', enableIOS, { once: true });
+        } else if (isAndroid) {
+          soundChip.style.display = 'block';
         }
 
-        // Your original marker handlers, with a small guard for iOS readiness
+        const enableAudio = () => {
+          // Try to start both videos muted first (satisfy autoplay policies)
+          Promise.all([
+            videoColor.play().catch(()=>{}),
+            videoAlpha.play().catch(()=>{})
+          ]).then(() => {
+            // Now unmute only the color video and play again to get audio
+            videoColor.muted = false;
+            return videoColor.play().catch(()=>{});
+          }).finally(() => {
+            audioUnlocked = true;
+            tapOverlay.style.display = 'none';
+            soundChip.style.display = 'none';
+          });
+        };
+
+        // Gesture listeners
+        tapBtn.addEventListener('click', enableAudio, { once: true });
+        tapOverlay.addEventListener('click', enableAudio, { once: true });
+        soundChip.addEventListener('click', enableAudio, { once: true });
+        // Also allow any first page tap to unlock audio (Android convenience)
+        window.addEventListener('touchend', function onFirstTouch() {
+          if (!audioUnlocked && (isAndroid || isIOS)) enableAudio();
+          window.removeEventListener('touchend', onFirstTouch);
+        }, { passive: true });
+
+        // Your original marker handlers, with a guard for readiness
         this.el.addEventListener('markerFound', function () {
-          // On Android this just plays; on iOS it plays only after tap has happened.
-          if (videoColor.paused && iosReady) { videoColor.play().catch(()=>{}); }
-          if (videoAlpha.paused && iosReady) { videoAlpha.play().catch(()=>{}); }
+          // If user hasn’t tapped yet, videos will play muted; after tap, audio starts
+          if (videoColor.paused) videoColor.play().catch(()=>{});
+          if (videoAlpha.paused) videoAlpha.play().catch(()=>{});
         });
 
         this.el.addEventListener('markerLost', function () {
@@ -94,10 +103,12 @@
   <!-- iOS tap-to-start overlay -->
   <div class="tap-overlay" id="tapOverlay">
     <div>
-      <div>Tap to enable video on iOS</div>
+      <div>Tap to enable video & audio</div>
       <button class="tap-btn" id="tapBtn">Enable</button>
     </div>
   </div>
+  <!-- Android sound chip -->
+  <div class="sound-chip" id="soundChip">🔊 Tap to enable sound</div>
 
   <a-scene
     vr-mode-ui="enabled: false;"
@@ -107,11 +118,7 @@
     onloaded="document.getElementById('loader').style.display='none';"
   >
     <a-assets>
-      <!-- Use the same sources you had. Key differences:
-           - Keep playsinline/webkit-playsinline for iOS
-           - Add muted by default; iOS will unmute color after user gesture in code above
-           - Remove 'autoplay' for maximum iOS reliability; Android still starts on markerFound
-      -->
+      <!-- Keep playsinline for iOS; start muted; we unmute color on gesture -->
       <video
         id="videoColor"
         src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Color.mp4"
@@ -135,7 +142,7 @@
       ></video>
     </a-assets>
 
-    <!-- Shader (unchanged) -->
+    <!-- Shader -->
     <script id="matte-shader" type="x-shader/x-fragment">
       precision mediump float;
       uniform sampler2D videoColor;
