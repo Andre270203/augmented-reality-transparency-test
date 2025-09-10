@@ -360,6 +360,7 @@
         <!-- NFT marker with video player component -->
         <a-nft
             videoplayer
+            videoplayer-android
             type="nft"
             url="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/marker/AR_Image-1"
             smooth="true"
@@ -391,34 +392,26 @@
         const platformName = isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop';
         document.getElementById('platformInfo').innerText = platformName;
         
-        // Android camera zoom fix
+        // Android camera zoom 
         if (isAndroid) {
-            // Wait for AR.js to initialize, then adjust camera settings
-            setTimeout(() => {
-                const video = document.querySelector('video[autoplay]');
-                if (video) {
-                    // Try to get the video stream and adjust constraints
-                    const stream = video.srcObject;
-                    if (stream) {
-                        const videoTrack = stream.getVideoTracks()[0];
-                        if (videoTrack && videoTrack.applyConstraints) {
-                            videoTrack.applyConstraints({
-                                width: { ideal: 1280, max: 1920 },
-                                height: { ideal: 960, max: 1080 },
-                                facingMode: 'environment',
-                                focusMode: 'continuous',
-                                zoom: { ideal: 1, min: 1, max: 1 }
-                            }).then(() => {
-                                console.log('Android: Camera constraints applied');
-                                document.getElementById('debugInfo').innerText += ' | Camera: Optimized';
-                            }).catch(err => {
-                                console.log('Android: Camera constraint adjustment failed:', err);
-                            });
-                        }
-                    }
+            AFRAME.registerComponent('videoplayer-android', {
+                init: function() {
+                    const videoColor = document.querySelector('#videoColor');
+                    const videoAlpha = document.querySelector('#videoAlpha');
+
+                    this.el.addEventListener('markerFound', function() {
+                        if (videoColor.paused) videoColor.play();
+                        if (videoAlpha.paused) videoAlpha.play();
+                    });
+
+                    this.el.addEventListener('markerLost', function() {
+                        videoColor.pause();
+                        videoAlpha.pause();
+                    });
                 }
-            }, 3000);
+            });
         }
+
         
         // Handle start button with platform-specific behavior
         document.getElementById('startButton').addEventListener('click', function() {
