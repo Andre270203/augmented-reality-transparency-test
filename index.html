@@ -1,127 +1,199 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Back Home AR Experience</title>
+  <meta charset="utf-8" />
+  <title>Back Home AR Experience</title>
 
-    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.6.0/dist/aframe-master.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
-    <script>
-        // Componente de A-Frame para reproducir videos
-        AFRAME.registerComponent('videoplayer', {
-            init: function() {
-                // Referencia a las entidades de video
-                let videoColor = document.querySelector('#videoColor');
-                let videoAlpha = document.querySelector('#videoAlpha');
+  <style>
+    body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .arjs-loader {
+      height: 100%; width: 100%; position: absolute; top: 0; left: 0;
+      background: rgba(0,0,0,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center;
+      color: #fff; font-size: 1.1em;
+    }
+    .tap-overlay {
+      position: absolute; inset: 0; display: none; z-index: 10000;
+      background: rgba(0,0,0,0.55); color: #fff; font-weight: 700;
+      align-items: center; justify-content: center; text-align: center; padding: 24px;
+    }
+    .tap-btn {
+      margin-top: 12px; background: #4caf50; color: #fff; border: 0; border-radius: 20px; padding: 10px 18px; font-weight: 700;
+    }
+    /* Small, unobtrusive Android “sound” chip */
+    .sound-chip {
+      position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+      background: rgba(0,0,0,0.7); color: #fff; padding: 8px 12px; border-radius: 999px; font-size: 14px; z-index: 10001; display: none;
+    }
+  </style>
 
-                // Escuchar el evento 'markerFound' en el marcador
-                this.el.addEventListener('markerFound', function() {
-                    console.log('Marcador encontrado, intentando reproducir videos...');
-                    // Intentar reproducir los videos si están pausados
-                    if (videoColor.paused) {
-                        videoColor.play();
-                    }
-                    if (videoAlpha.paused) {
-                        videoAlpha.play();
-                    }
-                });
+  <script>
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
 
-                // Escuchar el evento 'markerLost' para pausar los videos
-                this.el.addEventListener('markerLost', function() {
-                    console.log('Marcador perdido, pausando videos...');
-                    // Pausar los videos
-                    videoColor.pause();
-                    videoAlpha.pause();
-                });
-            }
+    // Your simple videoplayer + cross-platform audio unlock
+    AFRAME.registerComponent('videoplayer', {
+      init: function () {
+        const videoColor = document.querySelector('#videoColor');
+        const videoAlpha = document.querySelector('#videoAlpha');
+
+        // Start both muted for maximum compatibility; we’ll unmute color on tap
+        videoColor.muted = true;
+        videoAlpha.muted = true;
+
+        let audioUnlocked = false; // becomes true after first user gesture
+        const tapOverlay = document.getElementById('tapOverlay');
+        const tapBtn = document.getElementById('tapBtn');
+        const soundChip = document.getElementById('soundChip');
+
+        // iOS: require full overlay; Android: show small “Enable sound” chip
+        if (isIOS) {
+          tapOverlay.style.display = 'flex';
+        } else if (isAndroid) {
+          soundChip.style.display = 'block';
+        }
+
+        const enableAudio = () => {
+          // Try to start both videos muted first (satisfy autoplay policies)
+          Promise.all([
+            videoColor.play().catch(()=>{}),
+            videoAlpha.play().catch(()=>{})
+          ]).then(() => {
+            // Now unmute only the color video and play again to get audio
+            videoColor.muted = false;
+            return videoColor.play().catch(()=>{});
+          }).finally(() => {
+            audioUnlocked = true;
+            tapOverlay.style.display = 'none';
+            soundChip.style.display = 'none';
+          });
+        };
+
+        // Gesture listeners
+        tapBtn.addEventListener('click', enableAudio, { once: true });
+        tapOverlay.addEventListener('click', enableAudio, { once: true });
+        soundChip.addEventListener('click', enableAudio, { once: true });
+        // Also allow any first page tap to unlock audio (Android convenience)
+        window.addEventListener('touchend', function onFirstTouch() {
+          if (!audioUnlocked && (isAndroid || isIOS)) enableAudio();
+          window.removeEventListener('touchend', onFirstTouch);
+        }, { passive: true });
+
+        // Your original marker handlers, with a guard for readiness
+        this.el.addEventListener('markerFound', function () {
+          // If user hasn’t tapped yet, videos will play muted; after tap, audio starts
+          if (videoColor.paused) videoColor.play().catch(()=>{});
+          if (videoAlpha.paused) videoAlpha.play().catch(()=>{});
         });
-    </script>
 
-    <style>
-        .arjs-loader {
-            height: 100%;
-            width: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .arjs-loader div {
-            text-align: center;
-            font-size: 1.25em;
-            color: white;
-        }
-    </style>
+        this.el.addEventListener('markerLost', function () {
+          if (!videoColor.paused) videoColor.pause();
+          if (!videoAlpha.paused) videoAlpha.pause();
+        });
+      }
+    });
+  </script>
 </head>
 
 <body style="margin: 0; overflow: hidden;">
-    <div class="arjs-loader">
-        <div>Loading, please wait...</div>
+  <div class="arjs-loader" id="loader"><div>Loading, please wait…</div></div>
+
+  <!-- iOS tap-to-start overlay -->
+  <div class="tap-overlay" id="tapOverlay">
+    <div>
+      <div>Tap to enable video & audio</div>
+      <button class="tap-btn" id="tapBtn">Enable</button>
     </div>
+  </div>
+  <!-- Android sound chip -->
+  <div class="sound-chip" id="soundChip">🔊 Tap to enable sound</div>
 
-    <a-scene vr-mode-ui="enabled: false;"
-        renderer="logarithmicDepthBuffer: true; precision: medium;"
-        embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
+  <a-scene
+    vr-mode-ui="enabled: false;"
+    renderer="logarithmicDepthBuffer: true; precision: medium;"
+    embedded
+    arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
+    onloaded="document.getElementById('loader').style.display='none';"
+  >
+    <a-assets>
+      <!-- Keep playsinline for iOS; start muted; we unmute color on gesture -->
+      <video
+        id="videoColor"
+        src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Color.mp4"
+        preload="metadata"
+        loop
+        muted
+        crossorigin="anonymous"
+        webkit-playsinline
+        playsinline
+      ></video>
 
-        <a-assets>
-            <video src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Color.mp4" preload="auto" id="videoColor" response-type="arraybuffer" loop crossorigin webkit-playsinline autoplay playsinline></video>
-            <video src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4" preload="auto" id="videoAlpha" response-type="arraybuffer" loop crossorigin webkit-playsinline autoplay playsinline></video>
-        </a-assets>
+      <video
+        id="videoAlpha"
+        src="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4"
+        preload="metadata"
+        loop
+        muted
+        crossorigin="anonymous"
+        webkit-playsinline
+        playsinline
+      ></video>
+    </a-assets>
 
-        <script id="matte-shader" type="x-shader/x-fragment">
-            precision mediump float;
-            uniform sampler2D videoColor;
-            uniform sampler2D videoAlpha;
-            varying vec2 vUV;
-            void main() {
-                vec4 color = texture2D(videoColor, vUV);
-                vec4 alpha = texture2D(videoAlpha, vUV);
-                gl_FragColor = vec4(color.rgb, alpha.r);
-            }
-        </script>
+    <!-- Shader -->
+    <script id="matte-shader" type="x-shader/x-fragment">
+      precision mediump float;
+      uniform sampler2D videoColor;
+      uniform sampler2D videoAlpha;
+      varying vec2 vUV;
+      void main() {
+        vec4 color = texture2D(videoColor, vUV);
+        vec4 alpha = texture2D(videoAlpha, vUV);
+        gl_FragColor = vec4(color.rgb, alpha.r);
+      }
+    </script>
 
-        <script>
-            AFRAME.registerShader('video-matte-shader', {
-                schema: {
-                    videoColor: { type: 'map', is: 'uniform' },
-                    videoAlpha: { type: 'map', is: 'uniform' }
-                },
-                fragmentShader: document.getElementById('matte-shader').textContent,
-                vertexShader: `
-                    varying vec2 vUV;
-                    void main() {
-                        vUV = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `
-            });
-        </script>
+    <script>
+      AFRAME.registerShader('video-matte-shader', {
+        schema: {
+          videoColor: { type: 'map', is: 'uniform' },
+          videoAlpha: { type: 'map', is: 'uniform' }
+        },
+        fragmentShader: document.getElementById('matte-shader').textContent,
+        vertexShader: `
+          varying vec2 vUV;
+          void main() {
+            vUV = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `
+      });
+    </script>
 
-        <a-nft
-            videoplayer
-            type="nft"
-            url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/AR_Image-1"
-            smooth="true"
-            smoothCount="10"
-            smoothTolerance="0.01"
-            smoothThreshold="5"
-        >
-            <a-entity
-                geometry="primitive: plane; width: 300; height: 175"
-                material="shader: video-matte-shader;
-                          videoColor: #videoColor;
-                          videoAlpha: #videoAlpha"
-                position="50 150 -100" rotation="-90 0 0">
-            </a-entity>
-        </a-nft>
+    <!-- Marker + plane -->
+    <a-nft
+      videoplayer
+      type="nft"
+      url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/AR_Image-1"
+      smooth="true"
+      smoothCount="10"
+      smoothTolerance="0.01"
+      smoothThreshold="5"
+    >
+      <a-entity
+        geometry="primitive: plane; width: 400; height: 250"
+        material="shader: video-matte-shader;
+                  videoColor: #videoColor;
+                  videoAlpha: #videoAlpha;
+                  transparent: true;"
+        position="110 170 -100"
+        rotation="-90 0 0"
+      ></a-entity>
+    </a-nft>
 
-        <a-entity camera look-controls position="0 1.6 0"></a-entity>
-    </a-scene>
+    <a-entity camera look-controls position="0 1.6 0"></a-entity>
+  </a-scene>
 </body>
 </html>
