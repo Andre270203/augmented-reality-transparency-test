@@ -114,7 +114,7 @@
     vr-mode-ui="enabled: false;"
     renderer="logarithmicDepthBuffer: true; precision: medium;"
     embedded
-    arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
+    arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: true;"
     onloaded="document.getElementById('loader').style.display='none';"
   >
     <a-assets>
@@ -178,8 +178,8 @@
       type="nft"
       url="https://raw.githack.com/Andre270203/augmented-reality-transparency-test/main/marker/AR_Image-1"
       smooth="true"
-      smoothCount="10"
-      smoothTolerance="0.01"
+      smoothCount="20"
+      smoothTolerance="0.05"
       smoothThreshold="5"
     >
       <a-entity
