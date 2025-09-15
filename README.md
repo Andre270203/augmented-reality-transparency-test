@@ -169,6 +169,7 @@ backhome_ar_seashell/
 - Hold device steady and at appropriate distance (30cm-1m)
 - Check camera permissions are granted
 - Avoid reflective surfaces that might interfere with tracking
+- For iOS systems is required touch the screen to activate the sound
 
 ## License
 
