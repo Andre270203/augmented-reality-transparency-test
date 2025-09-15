@@ -70,54 +70,20 @@
     const vc     = document.getElementById('videoColor');
     const va     = document.getElementById('videoAlpha');
 
-    let markerVisible = false;
-
     vc.pause(); va.pause(); vc.muted = true;
 
-    function bothRendering() {
-      return vc.readyState >= 2 && va.readyState >= 2;
-    }
-
-    function armOneTapUnmute() {
-      const handler = async () => {
-        if (!markerVisible || !bothRendering()) return;
-        vc.muted = false;
-        try { await vc.play(); } catch {}
-        window.removeEventListener('click', handler);
-      };
-      // One-time-ish, but we remove ourselves after success
-      window.addEventListener('click', handler);
-    }
-
+    // Only play/unmute when the marker is actually tracked
     marker.addEventListener('targetFound', async () => {
-      markerVisible = true;
       plane.setAttribute('visible', true);
-
-      // Start playback (muted) so textures update
+      vc.muted = false;
       try { await vc.play(); } catch {}
       try { await va.play(); } catch {}
-
-      // If both are rendering, allow a single tap to unmute
-      if (bothRendering()) armOneTapUnmute();
-      else {
-        // If not yet ready, arm when they become ready
-        const maybeArm = () => {
-          if (bothRendering()) { armOneTapUnmute(); cleanup(); }
-        };
-        const cleanup = () => {
-          vc.removeEventListener('canplay', maybeArm);
-          va.removeEventListener('canplay', maybeArm);
-        };
-        vc.addEventListener('canplay', maybeArm);
-        va.addEventListener('canplay', maybeArm);
-      }
     });
 
     marker.addEventListener('targetLost', () => {
-      markerVisible = false;
       plane.setAttribute('visible', false);
       vc.pause(); va.pause();
-      vc.muted = true; // re-mute so future autoplay works
+      vc.muted = true;
       vc.currentTime = 0; va.currentTime = 0;
     });
   </script>
