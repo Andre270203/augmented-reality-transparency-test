@@ -69,57 +69,38 @@
     const plane  = document.getElementById('videoPlane');
     const vc     = document.getElementById('videoColor');
     const va     = document.getElementById('videoAlpha');
-  
+
     let markerVisible = false;
-  
-    // Start muted so autoplay works (iOS)
-    vc.muted = true; vc.setAttribute('muted','');
-    va.muted = true; va.setAttribute('muted','');
-  
+
+    vc.muted = true; va.muted = true;
+
     function bothRendering() {
       return vc.readyState >= 2 && va.readyState >= 2;
     }
-  
-    async function resumeAudioContextsIfAny() {
-      try {
-        const ctx = (AFRAME && AFRAME.audioContext) || (window.THREE && THREE.AudioContext && THREE.AudioContext.getContext && THREE.AudioContext.getContext());
-        if (ctx && ctx.state === 'suspended') { await ctx.resume(); }
-      } catch {}
-    }
-  
+
     function armOneTapUnmute() {
       const handler = async () => {
         if (!markerVisible || !bothRendering()) return;
-  
-        await resumeAudioContextsIfAny();
         vc.muted = false;
-        vc.removeAttribute('muted');
-        vc.volume = 1.0;
-  
-        try { vc.currentTime = Math.max(0, vc.currentTime + 0.001); } catch {}
-  
         try { await vc.play(); } catch {}
-  
         window.removeEventListener('click', handler);
-        window.removeEventListener('touchend', handler);
-        window.removeEventListener('pointerup', handler);
       };
-  
+      // One-time-ish, but we remove ourselves after success
       window.addEventListener('click', handler);
-      window.addEventListener('touchend', handler, { passive: true });
-      window.addEventListener('pointerup', handler);
     }
-  
+
     marker.addEventListener('targetFound', async () => {
       markerVisible = true;
       plane.setAttribute('visible', true);
-  
+
+      // Start playback (muted) so textures update
       try { await vc.play(); } catch {}
-      try { va.currentTime = vc.currentTime; } catch {}
       try { await va.play(); } catch {}
-  
+
+      // If both are rendering, allow a single tap to unmute
       if (bothRendering()) armOneTapUnmute();
       else {
+        // If not yet ready, arm when they become ready
         const maybeArm = () => {
           if (bothRendering()) { armOneTapUnmute(); cleanup(); }
         };
@@ -131,17 +112,14 @@
         va.addEventListener('canplay', maybeArm);
       }
     });
-  
+
     marker.addEventListener('targetLost', () => {
       markerVisible = false;
       plane.setAttribute('visible', false);
       vc.pause(); va.pause();
-  
-      vc.muted = true; vc.setAttribute('muted','');
-      va.muted = true; va.setAttribute('muted','');
-  
+      vc.muted = true; // re-mute so future autoplay works
       vc.currentTime = 0; va.currentTime = 0;
     });
-  </script>  
+  </script>
 </body>
 </html>
