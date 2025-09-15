@@ -72,7 +72,7 @@
 
     let markerVisible = false;
 
-    vc.muted = true; va.muted = true;
+    va.muted = true;
 
     function bothRendering() {
       return vc.readyState >= 2 && va.readyState >= 2;
@@ -93,14 +93,11 @@
       markerVisible = true;
       plane.setAttribute('visible', true);
 
-      // Start playback (muted) so textures update
       try { await vc.play(); } catch {}
       try { await va.play(); } catch {}
 
-      // If both are rendering, allow a single tap to unmute
       if (bothRendering()) armOneTapUnmute();
       else {
-        // If not yet ready, arm when they become ready
         const maybeArm = () => {
           if (bothRendering()) { armOneTapUnmute(); cleanup(); }
         };
@@ -117,7 +114,7 @@
       markerVisible = false;
       plane.setAttribute('visible', false);
       vc.pause(); va.pause();
-      vc.muted = true; // re-mute so future autoplay works
+      vc.muted = true; 
       vc.currentTime = 0; va.currentTime = 0;
     });
   </script>
