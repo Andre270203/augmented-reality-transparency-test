@@ -36,7 +36,7 @@
 
 <body>
   <a-scene
-    mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/AR_Crab_Backhome/main/targets.mind; autoStart: true"
+    mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/targets.mind; autoStart: true"
     color-space="sRGB"
     renderer="colorManagement: true; physicallyCorrectLights: true"
     vr-mode-ui="enabled: false"
@@ -45,10 +45,10 @@
   >
     <a-assets>
       <video id="videoColor"
-             src="https://raw.githack.com/alevalve/AR_Crab_Backhome/main/AR_Video02_Color.mp4"
+             src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4"
              loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
       <video id="videoAlpha"
-             src="https://raw.githack.com/alevalve/AR_Crab_Backhome/main/AR_Video02_Alpha.mp4"
+             src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4"
              loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
     </a-assets>
 
@@ -72,16 +72,13 @@
 
     let markerVisible = false;
 
-    // Keep both muted so iOS allows playback/texture updates
     vc.muted = true; va.muted = true;
 
     function bothRendering() {
-      // readyState >= 2 => current frame available
       return vc.readyState >= 2 && va.readyState >= 2;
     }
 
     function armOneTapUnmute() {
-      // Unmute only when marker is visible AND both videos have frames
       const handler = async () => {
         if (!markerVisible || !bothRendering()) return;
         vc.muted = false;
