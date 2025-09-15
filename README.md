@@ -2,6 +2,8 @@
 
 An Augmented Reality web application that displays a composite video overlay when a specific seashell target image is detected using your device's camera.
 
+**Note: This application is part of the research paper presented at the International Conference on Computer Vision, 2025. (CV4E)**
+
 ## Overview
 
 This AR application uses image tracking to display a transparent video overlay in 3D space. When the camera detects the target seashell image, it plays two synchronized videos - one containing the color information and another containing the alpha (transparency) channel - creating a realistic composited AR experience.
