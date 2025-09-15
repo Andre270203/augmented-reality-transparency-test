@@ -10,19 +10,34 @@
 
   <style>
     html, body { margin:0; height:100%; overflow:hidden; background:transparent; }
+    .tap-to-unmute {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      padding: 10px 14px; border-radius: 999px; font: 600 14px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: rgba(0,0,0,.7); color: #fff; border: 1px solid rgba(255,255,255,.25);
+      display: none; z-index: 9999; -webkit-user-select: none; user-select: none;
+    }
   </style>
 
   <script>
     AFRAME.registerShader('video-matte', {
       schema: {
-        videoColor: { type: 'map', is: 'uniform' },
-        videoAlpha: { type: 'map', is: 'uniform' },
-        opacity:    { type: 'number', default: 1.0, is: 'uniform' }
+        videoColor: { type: 'map' },
+        videoAlpha: { type: 'map' },
+        opacity:    { type: 'number', default: 1.0 }
       },
-      vertexShader: `varying vec2 vUV; void main(){ vUV=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      vertexShader: `
+        varying vec2 vUV;
+        void main(){
+          vUV = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
       fragmentShader: `
-        precision highp float; varying vec2 vUV;
-        uniform sampler2D videoColor, videoAlpha; uniform float opacity;
+        precision highp float;
+        varying vec2 vUV;
+        uniform sampler2D videoColor;
+        uniform sampler2D videoAlpha;
+        uniform float opacity;
         void main(){
           vec4 c = texture2D(videoColor, vUV);
           float a = texture2D(videoAlpha, vUV).r;
@@ -35,6 +50,8 @@
 </head>
 
 <body>
+  <div id="unmuteBtn" class="tap-to-unmute">🔊 Tap for sound</div>
+
   <a-scene
     mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/targets.mind; autoStart: true"
     color-space="sRGB"
@@ -44,20 +61,18 @@
     embedded
   >
     <a-assets>
-      <!-- Your videos (muted so page can auto-start; will unmute on targetFound) -->
       <video id="videoColor"
              src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4"
-             loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+             autoplay muted loop playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
+
       <video id="videoAlpha"
              src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4"
-             loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+             autoplay muted loop playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Simple target, like the website demo (index 0) -->
     <a-entity id="marker" mindar-image-target="targetIndex: 0">
-      <!-- Show your composited video only when tracked -->
       <a-plane id="videoPlane"
         width="0.9" height="0.55"
         rotation="0 0 0" position="0 0 0"
@@ -72,23 +87,51 @@
     const plane  = document.getElementById('videoPlane');
     const vc     = document.getElementById('videoColor');
     const va     = document.getElementById('videoAlpha');
+    const unmute = document.getElementById('unmuteBtn');
 
-    vc.pause(); va.pause(); vc.muted = true;
+    // Ensure both load as muted so iOS allows autoplay/updates
+    vc.muted = true;
+    va.muted = true;
 
-    // Only play/unmute when the marker is actually tracked
+    // Keep videos ready
+    const prime = async v => {
+      try { await v.play(); } catch (e) { /* ignored; iOS may delay until painted */ }
+    };
+    vc.addEventListener('canplay', () => { /* ready */ }, { once: true });
+    va.addEventListener('canplay', () => { /* ready */ }, { once: true });
+
+    // Show/hide + play/pause on tracking
     marker.addEventListener('targetFound', async () => {
       plane.setAttribute('visible', true);
-      vc.muted = false;
-      try { await vc.play(); } catch {}
-      try { await va.play(); } catch {}
+      // Start both while muted (allowed by autoplay policies)
+      await prime(vc);
+      // Keep the alpha in sync with color
+      va.currentTime = vc.currentTime;
+      await prime(va);
+
+      // Offer unmute (user gesture) only if video has audio track
+      unmute.style.display = 'block';
     });
 
     marker.addEventListener('targetLost', () => {
       plane.setAttribute('visible', false);
       vc.pause(); va.pause();
-      vc.muted = true;
+      vc.muted = true;  
+
       vc.currentTime = 0; va.currentTime = 0;
+      unmute.style.display = 'none';
     });
+
+    const handleUnmute = async () => {
+      unmute.style.display = 'none';
+      try {
+        vc.muted = false;
+        await vc.play();
+      } catch(e) {
+        unmute.style.display = 'block';
+      }
+    };
+    unmute.addEventListener('click', handleUnmute);
   </script>
 </body>
 </html>
