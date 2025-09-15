@@ -10,6 +10,19 @@
 
   <style>
     html, body { margin:0; height:100%; overflow:hidden; background:transparent; }
+    #audio-prompt {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      z-index: 1000;
+      display: none;
+    }
   </style>
 
   <script>
@@ -35,6 +48,8 @@
 </head>
 
 <body>
+  <div id="audio-prompt">Tap anywhere to enable audio</div>
+  
   <a-scene
     mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/targets.mind; autoStart: true"
     color-space="sRGB"
@@ -69,57 +84,108 @@
     const plane  = document.getElementById('videoPlane');
     const vc     = document.getElementById('videoColor');
     const va     = document.getElementById('videoAlpha');
+    const audioPrompt = document.getElementById('audio-prompt');
 
     let markerVisible = false;
+    let audioEnabled = false;
+    let userHasInteracted = false;
 
-    vc.muted = true; va.muted = true;
+    // Initialize videos as muted
+    vc.muted = true; 
+    va.muted = true;
 
     function bothRendering() {
       return vc.readyState >= 2 && va.readyState >= 2;
     }
 
-    function armOneTapUnmute() {
-      const handler = async () => {
-        if (!markerVisible || !bothRendering()) return;
+    // Simplified audio enablement
+    async function enableAudio() {
+      if (audioEnabled) return;
+      
+      try {
+        // Unmute both videos (in case audio is in either one)
         vc.muted = false;
-        try { await vc.play(); } catch {}
-        window.removeEventListener('click', handler);
-      };
-      // One-time-ish, but we remove ourselves after success
-      window.addEventListener('click', handler);
+        va.muted = false;
+        
+        // Try to play both videos with audio
+        await vc.play();
+        await va.play();
+        
+        audioEnabled = true;
+        audioPrompt.style.display = 'none';
+        console.log('Audio enabled successfully');
+      } catch (error) {
+        console.log('Audio enable failed:', error);
+        // Keep videos muted if audio fails
+        vc.muted = true;
+        va.muted = true;
+      }
     }
+
+    // Global click/touch handler for audio enablement
+    function setupAudioUnlock() {
+      const unlockAudio = async (e) => {
+        userHasInteracted = true;
+        if (markerVisible && !audioEnabled) {
+          await enableAudio();
+        }
+        // Remove listeners after first interaction
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('touchstart', unlockAudio);
+      };
+
+      document.addEventListener('click', unlockAudio);
+      document.addEventListener('touchstart', unlockAudio);
+    }
+
+    // Set up audio unlock on page load
+    setupAudioUnlock();
 
     marker.addEventListener('targetFound', async () => {
       markerVisible = true;
       plane.setAttribute('visible', true);
 
-      // Start playback (muted) so textures update
-      try { await vc.play(); } catch {}
-      try { await va.play(); } catch {}
+      // Start playback (muted initially)
+      try { 
+        await vc.play(); 
+        await va.play();
+      } catch (error) {
+        console.log('Video play failed:', error);
+      }
 
-      // If both are rendering, allow a single tap to unmute
-      if (bothRendering()) armOneTapUnmute();
-      else {
-        // If not yet ready, arm when they become ready
-        const maybeArm = () => {
-          if (bothRendering()) { armOneTapUnmute(); cleanup(); }
-        };
-        const cleanup = () => {
-          vc.removeEventListener('canplay', maybeArm);
-          va.removeEventListener('canplay', maybeArm);
-        };
-        vc.addEventListener('canplay', maybeArm);
-        va.addEventListener('canplay', maybeArm);
+      // Show audio prompt if user hasn't interacted yet
+      if (!userHasInteracted && !audioEnabled) {
+        audioPrompt.style.display = 'block';
+      }
+
+      // If user has already interacted, try to enable audio immediately
+      if (userHasInteracted && !audioEnabled) {
+        await enableAudio();
       }
     });
 
     marker.addEventListener('targetLost', () => {
       markerVisible = false;
       plane.setAttribute('visible', false);
-      vc.pause(); va.pause();
-      vc.muted = true; // re-mute so future autoplay works
-      vc.currentTime = 0; va.currentTime = 0;
+      audioPrompt.style.display = 'none';
+      
+      // Pause videos
+      vc.pause(); 
+      va.pause();
+      
+      // Reset to beginning
+      vc.currentTime = 0; 
+      va.currentTime = 0;
+      
+      // Re-mute for next time (required for autoplay)
+      vc.muted = true;
+      va.muted = true;
+      audioEnabled = false;
     });
+
+    // Handle video loading errors
+    vc.addEventListener('error', (e) => console.log('Color video error:', e));
+    va.addEventListener('error', (e) => console.log('Alpha video error:', e));
   </script>
 </body>
 </html>
