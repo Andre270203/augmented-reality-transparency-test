@@ -152,7 +152,8 @@ backhome_ar_seashell/
 ├── index.html              # Main AR application
 ├── target.mind             # MindAR target image data
 ├── AR_Video01_Color.mp4    # Color video track
-└── AR_Video01_Alpha.mp4    # Alpha video track
+├── AR_Video01_Alpha.mp4    # Alpha video track
+└── AR_Audio01.mp3  # Sound video track
 ```
 
 ## Troubleshooting
