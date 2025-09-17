@@ -65,7 +65,7 @@
     <video id="videoAlpha" src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Video01_Alpha.mp4"
            loop playsinline crossorigin="anonymous"></video>
     <audio id="audio" src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Audio01.mp3"
-           preload="auto" crossorigin="anonymous"></audio>
+           loop preload="auto" crossorigin="anonymous"></audio>
   </a-assets>
 
   <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -111,19 +111,18 @@
   });
 
   marker.addEventListener('targetFound', () => {
-    if (!experienceStarted) return;
+  if (!experienceStarted) return;
 
+  if (!markerVisible) {
     markerVisible = true;
     plane.setAttribute('visible', true);
-
-    vc.currentTime = 0;
-    va.currentTime = 0;
-    audio.currentTime = 0;
 
     vc.play().catch(() => {});
     va.play().catch(() => {});
     audio.play().catch(() => {});
-  });
+  }
+});
+
 
   marker.addEventListener('targetLost', () => {
     markerVisible = false;
