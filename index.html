@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Back Home AR</title>
+  <title>Back Home AR Seashell</title>
 
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -44,7 +44,6 @@
     embedded
   >
     <a-assets>
-      <!-- Your videos (muted so page can auto-start; will unmute on targetFound) -->
       <video id="videoColor"
              src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Video01_Color.mp4"
              loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
@@ -55,9 +54,7 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Simple target, like the website demo (index 0) -->
     <a-entity id="marker" mindar-image-target="targetIndex: 0">
-      <!-- Show your composited video only when tracked -->
       <a-plane id="videoPlane"
         width="0.9" height="0.55"
         rotation="0 0 0" position="0 0 0"
@@ -81,6 +78,20 @@
       return vc.readyState >= 2 && va.readyState >= 2;
     }
 
+    function waitForPlaybackSync() {
+      return new Promise((resolve) => {
+        const check = () => {
+          const synced = Math.abs(vc.currentTime - va.currentTime) < 0.05;
+          if (vc.readyState >= 2 && va.readyState >= 2 && synced) {
+            resolve();
+          } else {
+            requestAnimationFrame(check);
+          }
+        };
+        check();
+      });
+    }
+
     function armOneTapUnmute() {
       const handler = async () => {
         if (!markerVisible || !bothRendering()) return;
@@ -88,39 +99,26 @@
         try { await vc.play(); } catch {}
         window.removeEventListener('click', handler);
       };
-      // One-time-ish, but we remove ourselves after success
       window.addEventListener('click', handler);
     }
 
     marker.addEventListener('targetFound', async () => {
       markerVisible = true;
-      plane.setAttribute('visible', true);
-
 
       try { await vc.play(); } catch {}
       try { await va.play(); } catch {}
 
+      await waitForPlaybackSync(); 
 
-      if (bothRendering()) armOneTapUnmute();
-      else {
-
-        const maybeArm = () => {
-          if (bothRendering()) { armOneTapUnmute(); cleanup(); }
-        };
-        const cleanup = () => {
-          vc.removeEventListener('canplay', maybeArm);
-          va.removeEventListener('canplay', maybeArm);
-        };
-        vc.addEventListener('canplay', maybeArm);
-        va.addEventListener('canplay', maybeArm);
-      }
+      plane.setAttribute('visible', true); 
+      armOneTapUnmute();
     });
 
     marker.addEventListener('targetLost', () => {
       markerVisible = false;
       plane.setAttribute('visible', false);
       vc.pause(); va.pause();
-      vc.muted = true; 
+      vc.muted = true;
       vc.currentTime = 0; va.currentTime = 0;
     });
   </script>
