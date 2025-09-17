@@ -71,6 +71,7 @@
     const va     = document.getElementById('videoAlpha');
 
     let markerVisible = false;
+    let audioUnlocked = false;
 
     va.muted = true;
 
@@ -78,7 +79,7 @@
       return vc.readyState >= 2 && va.readyState >= 2;
     }
 
-    function waitForPlaybackSync() {
+    async function waitForPlaybackSync() {
       return new Promise((resolve) => {
         const check = () => {
           const synced = Math.abs(vc.currentTime - va.currentTime) < 0.05;
@@ -92,15 +93,22 @@
       });
     }
 
-    function armOneTapUnmute() {
-      const handler = async () => {
-        if (!markerVisible || !bothRendering()) return;
-        vc.muted = false;
-        try { await vc.play(); } catch {}
-        window.removeEventListener('click', handler);
-      };
-      window.addEventListener('click', handler);
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      vc.muted = true;
+      vc.play().then(() => {
+        vc.pause();
+        vc.currentTime = 0;
+        audioUnlocked = true;
+        console.log("Audio autoplay unlocked.");
+      }).catch((err) => {
+        console.warn("Autoplay unlock failed", err);
+      });
     }
+
+    // 🔓 One-time global tap to unlock audio on iOS/Safari
+    window.addEventListener('click', unlockAudio, { once: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true });
 
     marker.addEventListener('targetFound', async () => {
       markerVisible = true;
@@ -108,10 +116,16 @@
       try { await vc.play(); } catch {}
       try { await va.play(); } catch {}
 
-      await waitForPlaybackSync(); 
+      await waitForPlaybackSync();
 
-      plane.setAttribute('visible', true); 
-      armOneTapUnmute();
+      plane.setAttribute('visible', true);
+
+      if (audioUnlocked) {
+        vc.muted = false;
+        try { await vc.play(); } catch {}
+      } else {
+        console.warn("Audio still locked — waiting for user interaction.");
+      }
     });
 
     marker.addEventListener('targetLost', () => {
