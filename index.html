@@ -36,7 +36,7 @@
 
 <body>
   <a-scene
-    mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/backhome_ar_seashell/main/targets.mind; autoStart: true"
+    mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/targets.mind; autoStart: true"
     color-space="sRGB"
     renderer="colorManagement: true; physicallyCorrectLights: true"
     vr-mode-ui="enabled: false"
@@ -45,10 +45,10 @@
   >
     <a-assets>
       <video id="videoColor"
-             src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Video01_Color.mp4"
+             src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4"
              loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
       <video id="videoAlpha"
-             src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Video01_Alpha.mp4"
+             src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4"
              loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
     </a-assets>
 
@@ -71,60 +71,39 @@
     const va     = document.getElementById('videoAlpha');
 
     let markerVisible = false;
-    let audioUnlocked = false;
-
-    va.muted = true;
 
     function bothRendering() {
       return vc.readyState >= 2 && va.readyState >= 2;
     }
 
-    async function waitForPlaybackSync() {
-      return new Promise((resolve) => {
-        const check = () => {
-          const synced = Math.abs(vc.currentTime - va.currentTime) < 0.05;
-          if (vc.readyState >= 2 && va.readyState >= 2 && synced) {
-            resolve();
-          } else {
-            requestAnimationFrame(check);
-          }
-        };
-        check();
-      });
+    function armOneTapUnmute() {
+      const handler = async () => {
+        if (!markerVisible || !bothRendering()) return;
+        vc.muted = false;
+        try { await vc.play(); } catch {}
+        window.removeEventListener('click', handler);
+      };
+      window.addEventListener('click', handler);
     }
-
-    function unlockAudio() {
-      if (audioUnlocked) return;
-      vc.muted = true;
-      vc.play().then(() => {
-        vc.pause();
-        vc.currentTime = 0;
-        audioUnlocked = true;
-        console.log("Audio autoplay unlocked.");
-      }).catch((err) => {
-        console.warn("Autoplay unlock failed", err);
-      });
-    }
-
-    // 🔓 One-time global tap to unlock audio on iOS/Safari
-    window.addEventListener('click', unlockAudio, { once: true });
-    window.addEventListener('touchstart', unlockAudio, { once: true });
 
     marker.addEventListener('targetFound', async () => {
       markerVisible = true;
+      plane.setAttribute('visible', true);
 
       try { await vc.play(); } catch {}
       try { await va.play(); } catch {}
 
-      await waitForPlaybackSync();
-
-      plane.setAttribute('visible', true);
-
-      if (audioUnlocked) {
-        vc.muted = false;
-        try { await vc.play(); } catch {}
-      } else {
-        console.warn("Audio still locked — waiting for user interaction.");
+      if (bothRendering()) armOneTapUnmute();
+      else {
+        const maybeArm = () => {
+          if (bothRendering()) { armOneTapUnmute(); cleanup(); }
+        };
+        const cleanup = () => {
+          vc.removeEventListener('canplay', maybeArm);
+          va.removeEventListener('canplay', maybeArm);
+        };
+        vc.addEventListener('canplay', maybeArm);
+        va.addEventListener('canplay', maybeArm);
       }
     });
 
@@ -132,7 +111,7 @@
       markerVisible = false;
       plane.setAttribute('visible', false);
       vc.pause(); va.pause();
-      vc.muted = true;
+      vc.muted = true; 
       vc.currentTime = 0; va.currentTime = 0;
     });
   </script>
