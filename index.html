@@ -20,100 +20,124 @@
         opacity:    { type: 'number', default: 1.0, is: 'uniform' }
       },
       vertexShader: `varying vec2 vUV; void main(){ vUV=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-      fragmentShader: `
-        precision highp float; varying vec2 vUV;
-        uniform sampler2D videoColor, videoAlpha; uniform float opacity;
+      fragmentShader: `precision highp float;
+        varying vec2 vUV;
+        uniform sampler2D videoColor, videoAlpha;
+        uniform float opacity;
         void main(){
           vec4 c = texture2D(videoColor, vUV);
           float a = texture2D(videoAlpha, vUV).r;
           a = smoothstep(0.15, 0.95, a) * opacity;
           gl_FragColor = vec4(c.rgb, a);
-        }
-      `
+        }`
     });
   </script>
 </head>
 
 <body>
-  <a-scene
-    mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/targets.mind; autoStart: true"
-    color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: true"
-    embedded
-  >
-    <a-assets>
-      <video id="videoColor"
-             src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Color.mp4"
-             loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
-      <video id="videoAlpha"
-             src="https://raw.githack.com/alevalve/augmented-reality-transparency-test/main/AR_Video01_Alpha.mp4"
-             loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
-    </a-assets>
+<a-scene mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/backhome_ar_seashell/main/targets.mind; autoStart: true"
+         color-space="sRGB"
+         renderer="colorManagement: true; physicallyCorrectLights: true"
+         vr-mode-ui="enabled: false"
+         device-orientation-permission-ui="enabled: true"
+         embedded>
+  <a-assets>
+    <video id="videoColor" src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Video01_Color.mp4"
+           loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+    <video id="videoAlpha" src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Video01_Alpha.mp4"
+           loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+    <audio id="audio" src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Audio01.mp3"
+           preload="auto" crossorigin="anonymous"></audio>
+  </a-assets>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <a-entity id="marker" mindar-image-target="targetIndex: 0">
-      <a-plane id="videoPlane"
-        width="0.9" height="0.55"
-        rotation="0 0 0" position="0 0 0"
-        visible="false"
-        material="shader: video-matte; videoColor: #videoColor; videoAlpha: #videoAlpha; transparent: true; depthWrite: false">
-      </a-plane>
-    </a-entity>
-  </a-scene>
+  <a-entity id="marker" mindar-image-target="targetIndex: 0">
+    <a-plane id="videoPlane"
+             width="0.9"
+             height="0.55"
+             rotation="0 0 0"
+             position="0 0 0"
+             visible="false"
+             material="shader: video-matte; videoColor: #videoColor; videoAlpha: #videoAlpha; transparent: true; depthWrite: false">
+    </a-plane>
+  </a-entity>
+</a-scene>
 
-  <script>
-    const marker = document.getElementById('marker');
-    const plane  = document.getElementById('videoPlane');
-    const vc     = document.getElementById('videoColor');
-    const va     = document.getElementById('videoAlpha');
+<script>
+  const marker = document.getElementById('marker');
+  const plane = document.getElementById('videoPlane');
+  const vc = document.getElementById('videoColor');
+  const va = document.getElementById('videoAlpha');
+  const audio = document.getElementById('audio');
 
-    let markerVisible = false;
+  let markerVisible = false;
 
-    function bothRendering() {
-      return vc.readyState >= 2 && va.readyState >= 2;
-    }
+  function bothRendering() {
+    return vc.readyState >= 2 && va.readyState >= 2 && audio.readyState >= 2;
+  }
 
-    function armOneTapUnmute() {
-      const handler = async () => {
-        if (!markerVisible || !bothRendering()) return;
-        vc.muted = false;
-        try { await vc.play(); } catch {}
-        window.removeEventListener('click', handler);
-      };
-      window.addEventListener('click', handler);
-    }
+  function armOneTapUnmute() {
+    const handler = async () => {
+      if (!markerVisible || !bothRendering()) return;
 
-    marker.addEventListener('targetFound', async () => {
-      markerVisible = true;
-      plane.setAttribute('visible', true);
+      // Enable audio + video sync
+      vc.muted = false;
+      audio.muted = false;
 
       try { await vc.play(); } catch {}
       try { await va.play(); } catch {}
+      try { await audio.play(); } catch {}
 
-      if (bothRendering()) armOneTapUnmute();
-      else {
-        const maybeArm = () => {
-          if (bothRendering()) { armOneTapUnmute(); cleanup(); }
-        };
-        const cleanup = () => {
-          vc.removeEventListener('canplay', maybeArm);
-          va.removeEventListener('canplay', maybeArm);
-        };
-        vc.addEventListener('canplay', maybeArm);
-        va.addEventListener('canplay', maybeArm);
-      }
-    });
+      window.removeEventListener('click', handler);
+    };
 
-    marker.addEventListener('targetLost', () => {
-      markerVisible = false;
-      plane.setAttribute('visible', false);
-      vc.pause(); va.pause();
-      vc.muted = true; 
-      vc.currentTime = 0; va.currentTime = 0;
-    });
-  </script>
+    window.addEventListener('click', handler);
+  }
+
+  marker.addEventListener('targetFound', async () => {
+    markerVisible = true;
+    plane.setAttribute('visible', true);
+
+    try { await vc.play(); } catch {}
+    try { await va.play(); } catch {}
+    try { await audio.play(); } catch {}
+
+    if (bothRendering()) {
+      armOneTapUnmute();
+    } else {
+      const maybeArm = () => {
+        if (bothRendering()) {
+          armOneTapUnmute();
+          cleanup();
+        }
+      };
+      const cleanup = () => {
+        vc.removeEventListener('canplay', maybeArm);
+        va.removeEventListener('canplay', maybeArm);
+        audio.removeEventListener('canplay', maybeArm);
+      };
+      vc.addEventListener('canplay', maybeArm);
+      va.addEventListener('canplay', maybeArm);
+      audio.addEventListener('canplay', maybeArm);
+    }
+  });
+
+  marker.addEventListener('targetLost', () => {
+    markerVisible = false;
+    plane.setAttribute('visible', false);
+    
+    vc.pause();
+    va.pause();
+    audio.pause();
+
+    vc.muted = true;
+    audio.muted = true;
+
+    vc.currentTime = 0;
+    va.currentTime = 0;
+    audio.currentTime = 0;
+  });
+</script>
 </body>
 </html>
