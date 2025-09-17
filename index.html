@@ -9,7 +9,21 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    html, body { margin:0; height:100%; overflow:hidden; background:transparent; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+
+    #start-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 1.5em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      cursor: pointer;
+    }
   </style>
 
   <script>
@@ -17,7 +31,7 @@
       schema: {
         videoColor: { type: 'map', is: 'uniform' },
         videoAlpha: { type: 'map', is: 'uniform' },
-        opacity:    { type: 'number', default: 1.0, is: 'uniform' }
+        opacity: { type: 'number', default: 1.0, is: 'uniform' }
       },
       vertexShader: `varying vec2 vUV; void main(){ vUV=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
       fragmentShader: `precision highp float;
@@ -35,17 +49,21 @@
 </head>
 
 <body>
+<!-- Start Overlay -->
+<div id="start-overlay">Tap to Start Experience</div>
+
 <a-scene mindar-image="imageTargetSrc: https://raw.githack.com/alevalve/backhome_ar_seashell/main/targets.mind; autoStart: true"
          color-space="sRGB"
          renderer="colorManagement: true; physicallyCorrectLights: true"
          vr-mode-ui="enabled: false"
          device-orientation-permission-ui="enabled: true"
          embedded>
+
   <a-assets>
     <video id="videoColor" src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Video01_Color.mp4"
-           loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+           loop playsinline crossorigin="anonymous"></video>
     <video id="videoAlpha" src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Video01_Alpha.mp4"
-           loop muted playsinline webkit-playsinline crossorigin="anonymous"></video>
+           loop playsinline crossorigin="anonymous"></video>
     <audio id="audio" src="https://raw.githack.com/alevalve/backhome_ar_seashell/main/AR_Audio01.mp3"
            preload="auto" crossorigin="anonymous"></audio>
   </a-assets>
@@ -65,6 +83,7 @@
 </a-scene>
 
 <script>
+  const startOverlay = document.getElementById('start-overlay');
   const marker = document.getElementById('marker');
   const plane = document.getElementById('videoPlane');
   const vc = document.getElementById('videoColor');
@@ -72,67 +91,47 @@
   const audio = document.getElementById('audio');
 
   let markerVisible = false;
+  let experienceStarted = false;
 
-  function bothRendering() {
-    return vc.readyState >= 2 && va.readyState >= 2 && audio.readyState >= 2;
-  }
+  // Wait for tap to unlock audio
+  startOverlay.addEventListener('click', () => {
+    vc.muted = false;
+    audio.muted = false;
 
-  function armOneTapUnmute() {
-    const handler = async () => {
-      if (!markerVisible || !bothRendering()) return;
+    vc.play().catch(() => {});
+    va.play().catch(() => {});
+    audio.play().catch(() => {});
 
-      // Enable audio + video sync
-      vc.muted = false;
-      audio.muted = false;
+    vc.pause(); vc.currentTime = 0;
+    va.pause(); va.currentTime = 0;
+    audio.pause(); audio.currentTime = 0;
 
-      try { await vc.play(); } catch {}
-      try { await va.play(); } catch {}
-      try { await audio.play(); } catch {}
+    experienceStarted = true;
+    startOverlay.style.display = 'none';
+  });
 
-      window.removeEventListener('click', handler);
-    };
+  marker.addEventListener('targetFound', () => {
+    if (!experienceStarted) return;
 
-    window.addEventListener('click', handler);
-  }
-
-  marker.addEventListener('targetFound', async () => {
     markerVisible = true;
     plane.setAttribute('visible', true);
 
-    try { await vc.play(); } catch {}
-    try { await va.play(); } catch {}
-    try { await audio.play(); } catch {}
+    vc.currentTime = 0;
+    va.currentTime = 0;
+    audio.currentTime = 0;
 
-    if (bothRendering()) {
-      armOneTapUnmute();
-    } else {
-      const maybeArm = () => {
-        if (bothRendering()) {
-          armOneTapUnmute();
-          cleanup();
-        }
-      };
-      const cleanup = () => {
-        vc.removeEventListener('canplay', maybeArm);
-        va.removeEventListener('canplay', maybeArm);
-        audio.removeEventListener('canplay', maybeArm);
-      };
-      vc.addEventListener('canplay', maybeArm);
-      va.addEventListener('canplay', maybeArm);
-      audio.addEventListener('canplay', maybeArm);
-    }
+    vc.play().catch(() => {});
+    va.play().catch(() => {});
+    audio.play().catch(() => {});
   });
 
   marker.addEventListener('targetLost', () => {
     markerVisible = false;
     plane.setAttribute('visible', false);
-    
+
     vc.pause();
     va.pause();
     audio.pause();
-
-    vc.muted = true;
-    audio.muted = true;
 
     vc.currentTime = 0;
     va.currentTime = 0;
